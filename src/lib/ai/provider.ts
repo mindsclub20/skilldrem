@@ -1,44 +1,60 @@
-/**
- * Provider-independent AI abstraction.
- * Live API credentials are out of scope for this phase.
- * Swap implementations without rewriting the app.
- */
+import type { AIMessage, AICompleteOptions, AIProvider, AIProviderId } from "./types";
+import { GroqProvider } from "./groq";
+import { GeminiProvider } from "./gemini";
+import { FirecrawlClient } from "./firecrawl";
 
-export type AIMessage = { role: "system" | "user" | "assistant"; content: string };
+export type { AIMessage, AICompleteOptions, AIProvider, AIProviderId } from "./types";
+export { FirecrawlClient } from "./firecrawl";
 
-export interface AIProvider {
-  id: string;
-  name: string;
-  complete(messages: AIMessage[], options?: { temperature?: number }): Promise<string>;
+export function getAIProvider(preferred?: AIProviderId): AIProvider | null {
+  const groqKey = process.env.GROQ_API_KEY?.trim();
+  const geminiKey = process.env.GEMINI_API_KEY?.trim() || process.env.GOOGLE_GENERATIVE_AI_API_KEY?.trim();
+
+  if (preferred === "groq" && groqKey) return new GroqProvider(groqKey);
+  if (preferred === "gemini" && geminiKey) return new GeminiProvider(geminiKey);
+
+  if (groqKey) return new GroqProvider(groqKey);
+  if (geminiKey) return new GeminiProvider(geminiKey);
+  return null;
 }
 
-/** Placeholder — returns structured guidance, not live model output */
-export class StubAIProvider implements AIProvider {
-  id = "stub";
-  name = "Stub (no live API)";
-  async complete(messages: AIMessage[]): Promise<string> {
-    const last = messages.filter((m) => m.role === "user").pop()?.content ?? "";
-    return [
-      "AI provider is not configured with live credentials.",
-      "This is the integration interface for future providers (OpenAI, Anthropic, Grok, etc.).",
-      "",
-      `Your request: ${last.slice(0, 200)}`,
-      "",
-      "Suggested next steps:",
-      "1. Review prerequisites for your goal",
-      "2. Pick a free or free-audit course",
-      "3. Attach an AI mentor for explanations",
-      "4. Track progress inside a Georny",
-    ].join("\n");
+export function getFirecrawl(): FirecrawlClient | null {
+  const key = process.env.FIRECRAWL_API_KEY?.trim();
+  if (!key) return null;
+  return new FirecrawlClient(key);
+}
+
+export function listConfiguredProviders(): { llm: string[]; firecrawl: boolean } {
+  const llm: string[] = [];
+  if (process.env.GROQ_API_KEY?.trim()) llm.push("groq");
+  if (process.env.GEMINI_API_KEY?.trim() || process.env.GOOGLE_GENERATIVE_AI_API_KEY?.trim()) {
+    llm.push("gemini");
   }
+  return { llm, firecrawl: Boolean(process.env.FIRECRAWL_API_KEY?.trim()) };
 }
 
-let active: AIProvider = new StubAIProvider();
+export async function completeWithFallback(
+  messages: AIMessage[],
+  options?: AICompleteOptions & { preferred?: AIProviderId }
+): Promise<{ text: string; provider: string }> {
+  const order: AIProviderId[] =
+    options?.preferred === "gemini" ? ["gemini", "groq"] : ["groq", "gemini"];
 
-export function setAIProvider(provider: AIProvider) {
-  active = provider;
-}
+  const errors: string[] = [];
+  for (const id of order) {
+    const provider = getAIProvider(id);
+    if (!provider) continue;
+    try {
+      const text = await provider.complete(messages, options);
+      return { text, provider: provider.id };
+    } catch (e) {
+      errors.push(`${id}: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
 
-export function getAIProvider(): AIProvider {
-  return active;
+  throw new Error(
+    errors.length
+      ? `All AI providers failed. ${errors.join(" | ")}`
+      : "No AI API keys configured. Set GROQ_API_KEY and/or GEMINI_API_KEY."
+  );
 }
