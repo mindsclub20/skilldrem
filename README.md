@@ -3,33 +3,63 @@
 **Smart Learning Roadmap Curator**  
 *Find your knowledge. Find your tools. Find your path.*
 
-AI-powered learning discovery platform: free/paid courses, open ebooks, AI mentors, and interactive **Georny** learning journeys.
-
 ## Stack
 
-- Next.js 15 (App Router) + TypeScript + Tailwind CSS 4
-- Supabase (Auth, Postgres, RLS)
-- React Flow (`@xyflow/react`) for Georny graphs
-- Deploy target: Vercel
+- **Next.js 15** (App Router) + TypeScript + Tailwind CSS 4
+- **Supabase** Auth + Postgres + RLS (project `lxlbuljcecratjypmoxi`, region eu-west-1)
+- **@xyflow/react** for interactive Georny graphs
+- Deploy target: **Vercel** (not configured in this phase)
 
-## Setup
+## Environment
 
-1. Copy `.env.local.example` to `.env.local` and set:
-   - `NEXT_PUBLIC_SUPABASE_URL`
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-2. `npm install`
-3. `npm run dev`
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://lxlbuljcecratjypmoxi.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<publishable/anon key from Supabase dashboard>
+```
 
-## Database
+Never commit the service-role key. Never expose it in client bundles.
 
-Schema and RLS live in Supabase project `lxlbuljcecratjypmoxi`. Migrations were applied via Supabase MCP (`initial_skilldrem_schema`).
+## Local run
 
-## Scripts
+```bash
+npm install
+cp .env.local.example .env.local   # fill anon key
+npm run dev
+```
 
-- `npm run dev` — development
-- `npm run build` — production build
-- `npm run lint` — ESLint
+## What is implemented
 
-## Status
+| Area | Status |
+|------|--------|
+| Database schema (22 tables) + RLS | Done (Supabase) |
+| Seed: 2 Geornies + 8 resources | Done |
+| Auth (signup/login/logout/callback) | Done |
+| Onboarding → user_preferences | Done |
+| Landing + design system | Done |
+| Dashboard | Done |
+| Discover / Courses / Books / Mentors | Done |
+| Georny list + detail + React Flow graph | Done |
+| Admin CMS (server-side is_admin check) | Done |
+| AI provider abstraction (stub, no live keys) | Done |
+| Vercel project / production deploy | **Not done — hand off** |
 
-Foundation: auth, profiles, preferences, journeys, milestones, resources, dashboard, discovery shells, design system. Georny graph UI, admin CMS, seed data, and full multi-device polish are next.
+## Supabase migrations applied
+
+1. `enable_pg_trgm`
+2. `initial_skilldrem_schema`
+3. `seed_demo_georny_and_resources`
+
+## Auth redirect URLs to configure in Supabase
+
+After Vercel deploy, add to Supabase Auth → URL configuration:
+
+- Site URL: production URL
+- Redirect: `https://<prod>/auth/callback`
+
+## Admin access
+
+Set `profiles.is_admin = true` for a user id (SQL) or insert into `admin_roles`.
+
+## License / content policy
+
+Only legitimate free/open/paid resource links. No piracy facilitation.
