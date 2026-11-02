@@ -40,7 +40,8 @@ export async function updateSession(request: NextRequest) {
   const isProtected =
     path.startsWith("/dashboard") ||
     path.startsWith("/onboarding") ||
-    path.startsWith("/admin");
+    path.startsWith("/admin") ||
+    path.startsWith("/assistant");
 
   if (!user && isProtected) {
     const url = request.nextUrl.clone();
@@ -49,9 +50,10 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // After login, send users to the AI chat (not dashboard)
   if (user && isAuthPage && path !== "/auth/callback") {
     const url = request.nextUrl.clone();
-    url.pathname = "/dashboard";
+    url.pathname = "/assistant";
     return NextResponse.redirect(url);
   }
 

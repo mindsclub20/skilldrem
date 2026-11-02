@@ -12,7 +12,7 @@ export default function LoginForm() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirect = searchParams.get("redirect") || "/dashboard";
+  const redirect = searchParams.get("redirect") || "/assistant";
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -40,8 +40,9 @@ export default function LoginForm() {
             SKILLDREM
           </Link>
           <h1 className="mt-6 text-2xl font-bold">Welcome back</h1>
+          <p className="mt-2 text-sm text-muted-foreground">Sign in to chat with your learning AI</p>
         </div>
-        <form onSubmit={handleSubmit} className="rounded-2xl border border-border bg-card p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="rounded-2xl border border-border bg-card/90 backdrop-blur p-6 space-y-4">
           {error && (
             <div className="text-sm text-red-600 bg-red-50 dark:bg-red-950/40 px-3 py-2 rounded-lg">
               {error}

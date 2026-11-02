@@ -5,9 +5,14 @@ import { createClient } from "@/lib/supabase/server";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-const SYSTEM = `You are SKILLDREM learning assistant. Help learners plan paths, explain milestones, compare free vs paid resources, and suggest next steps.
-Be practical and honest about free vs paid. Never invent course prices or claim a resource is free unless the user or context says so.
-Keep answers concise and structured.`;
+const SYSTEM = `You are SKILLDREM, a friendly and practical AI learning teammate.
+You help users plan study paths, pick free vs paid resources carefully, explain concepts simply, and stay motivated.
+Rules:
+- Be conversational and clear — like a fast chat assistant (similar energy to Groq chat).
+- Use short paragraphs and bullet lists when helpful.
+- Never invent course prices or claim something is free without evidence.
+- If unsure, say so and suggest how the learner can verify.
+- Prefer actionable next steps.`;
 
 export async function GET() {
   return NextResponse.json({
@@ -23,6 +28,10 @@ export async function POST(request: Request) {
       data: { user },
     } = await supabase.auth.getUser();
 
+    if (!user) {
+      return NextResponse.json({ error: "Sign in required" }, { status: 401 });
+    }
+
     const body = (await request.json()) as {
       message?: string;
       history?: AIMessage[];
@@ -30,13 +39,13 @@ export async function POST(request: Request) {
     };
 
     const message = body.message?.trim();
-    if (!message || message.length > 4000) {
+    if (!message || message.length > 8000) {
       return NextResponse.json({ error: "Invalid message" }, { status: 400 });
     }
 
     const history = (body.history ?? [])
       .filter((m) => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
-      .slice(-12);
+      .slice(-20);
 
     const messages: AIMessage[] = [
       { role: "system", content: SYSTEM },
@@ -45,19 +54,17 @@ export async function POST(request: Request) {
     ];
 
     const { text, provider } = await completeWithFallback(messages, {
-      preferred: body.preferred,
-      temperature: 0.4,
-      maxTokens: 1200,
+      preferred: body.preferred ?? "groq",
+      temperature: 0.5,
+      maxTokens: 2048,
     });
 
-    if (user) {
-      await supabase.from("ai_sessions").insert({
-        user_id: user.id,
-        provider,
-        session_type: "chat",
-        messages: [...history, { role: "user", content: message }, { role: "assistant", content: text }],
-      });
-    }
+    await supabase.from("ai_sessions").insert({
+      user_id: user.id,
+      provider,
+      session_type: "chat",
+      messages: [...history, { role: "user", content: message }, { role: "assistant", content: text }],
+    });
 
     return NextResponse.json({ text, provider });
   } catch (e) {
