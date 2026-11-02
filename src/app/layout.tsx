@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import BowlGlow from "@/components/background/BowlGlow";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -53,7 +54,8 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">
-        {children}
+        <BowlGlow />
+        <div className="relative z-[1] flex min-h-full flex-col flex-1">{children}</div>
       </body>
     </html>
   );

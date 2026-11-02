@@ -57,6 +57,30 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans), system-ui, sans-serif;
+  overflow-x: hidden;
+}
+
+/* Fixed bowl-glow atmosphere (behind content) */
+.bowl-atmo {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: #fafafa;
+}
+
+.bowl-atmo canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Cards stay readable over the glow */
+.bg-card,
+[class*="bg-card"] {
+  isolation: isolate;
 }
 
 :focus-visible {
@@ -67,5 +91,11 @@ body {
 @media (min-width: 1920px) {
   .tv-scale {
     font-size: 1.25rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bowl-atmo canvas {
+    opacity: 0.55;
   }
 }
