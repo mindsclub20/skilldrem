@@ -3,12 +3,22 @@
 import { useState } from "react";
 import Link from "next/link";
 
+type Resource = {
+  title: string | null;
+  description: string | null;
+  url: string;
+  source: string | null;
+  note?: string;
+};
+
 export default function DiscoverPage() {
   const [goal, setGoal] = useState("");
   const [url, setUrl] = useState("");
   const [plan, setPlan] = useState<string | null>(null);
   const [provider, setProvider] = useState<string | null>(null);
+  const [resources, setResources] = useState<Resource[]>([]);
   const [scrapeNote, setScrapeNote] = useState<string | null>(null);
+  const [disclaimer, setDisclaimer] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -17,7 +27,9 @@ export default function DiscoverPage() {
     setLoading(true);
     setError(null);
     setPlan(null);
+    setResources([]);
     setScrapeNote(null);
+    setDisclaimer(null);
     try {
       const res = await fetch("/api/ai/discover", {
         method: "POST",
@@ -28,6 +40,8 @@ export default function DiscoverPage() {
       if (!res.ok) throw new Error(data.error || "Failed");
       setPlan(data.plan);
       setProvider(data.provider);
+      setResources(data.resources ?? []);
+      setDisclaimer(data.disclaimer ?? null);
       if (data.scrape?.error) setScrapeNote(data.scrape.error);
       else if (data.scrape?.title) setScrapeNote(`Scraped: ${data.scrape.title}`);
     } catch (err) {
@@ -51,7 +65,7 @@ export default function DiscoverPage() {
       <main className="mx-auto max-w-3xl px-4 py-12">
         <h1 className="text-2xl font-bold">Learning discovery</h1>
         <p className="mt-2 text-muted-foreground">
-          Uses Groq/Gemini for planning. Optional URL uses Firecrawl to read a page, then the LLM summarizes a path.
+          Firecrawl searches public learning pages; Groq (primary) or Gemini organizes a path. Links are not invented.
         </p>
         <form onSubmit={onSubmit} className="mt-8 space-y-3">
           <input
@@ -64,7 +78,7 @@ export default function DiscoverPage() {
           <input
             value={url}
             onChange={(e) => setUrl(e.target.value)}
-            placeholder="Optional page URL to analyze (Firecrawl)"
+            placeholder="Optional https page URL to analyze"
             type="url"
             className="w-full h-11 rounded-xl border border-border bg-card px-4 focus:ring-2 focus:ring-ring focus:outline-none text-sm"
           />
@@ -73,7 +87,7 @@ export default function DiscoverPage() {
             disabled={loading}
             className="h-12 rounded-xl bg-primary px-6 text-primary-foreground font-medium disabled:opacity-60"
           >
-            {loading ? "Planning…" : "Generate path"}
+            {loading ? "Searching & planning…" : "Generate path"}
           </button>
         </form>
 
@@ -83,6 +97,26 @@ export default function DiscoverPage() {
           </div>
         )}
         {scrapeNote && <p className="mt-4 text-xs text-muted-foreground">{scrapeNote}</p>}
+        {disclaimer && <p className="mt-2 text-xs text-muted-foreground">{disclaimer}</p>}
+
+        {resources.length > 0 && (
+          <section className="mt-8">
+            <h2 className="font-semibold mb-3">From search</h2>
+            <ul className="space-y-3">
+              {resources.map((r) => (
+                <li key={r.url} className="rounded-xl border border-border bg-card p-4">
+                  <a href={r.url} target="_blank" rel="noopener noreferrer" className="font-medium text-accent hover:underline">
+                    {r.title || r.url}
+                  </a>
+                  {r.source && <p className="text-xs text-muted-foreground mt-0.5">{r.source}</p>}
+                  {r.description && <p className="text-sm text-muted-foreground mt-1">{r.description}</p>}
+                  <p className="text-[11px] text-muted-foreground mt-2">{r.note}</p>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
         {plan && (
           <div className="mt-8 rounded-2xl border border-border bg-card p-6">
             {provider && <p className="text-xs uppercase tracking-wide text-accent mb-3">via {provider}</p>}
