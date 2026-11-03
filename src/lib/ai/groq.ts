@@ -1,7 +1,8 @@
 import type { AIMessage, AICompleteOptions, AIProvider } from "./types";
 
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
-const DEFAULT_MODEL = "llama-3.1-8b-instant";
+/** Free-tier friendly production model on Groq (Nov 2026). */
+const DEFAULT_MODEL = "openai/gpt-oss-20b";
 
 export class GroqProvider implements AIProvider {
   id = "groq" as const;
@@ -26,7 +27,7 @@ export class GroqProvider implements AIProvider {
 
     if (!res.ok) {
       const body = await res.text().catch(() => "");
-      throw new Error(`Groq error ${res.status}: ${body.slice(0, 300)}`);
+      throw new Error(`Groq error ${res.status}: ${body.slice(0, 400)}`);
     }
 
     const data = (await res.json()) as {

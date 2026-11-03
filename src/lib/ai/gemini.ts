@@ -1,6 +1,7 @@
 import type { AIMessage, AICompleteOptions, AIProvider } from "./types";
 
-const DEFAULT_MODEL = "gemini-2.0-flash";
+/** Current free-tier Gemini flash model (Nov 2026). */
+const DEFAULT_MODEL = "gemini-3.8-flash";
 
 export class GeminiProvider implements AIProvider {
   id = "gemini" as const;
@@ -43,7 +44,7 @@ export class GeminiProvider implements AIProvider {
 
     if (!res.ok) {
       const body = await res.text().catch(() => "");
-      throw new Error(`Gemini error ${res.status}: ${body.slice(0, 300)}`);
+      throw new Error(`Gemini error ${res.status}: ${body.slice(0, 400)}`);
     }
 
     const data = (await res.json()) as {
