@@ -36,6 +36,17 @@ export type DiscoveredResource = {
   note: string;
 };
 
+export type PracticeQuestion = {
+  id: string;
+  type: "multiple_choice" | "short_answer" | "coding";
+  prompt: string;
+  options?: string[];
+  /** Index into options for MCQ; model answer for short/coding */
+  correctAnswer: string;
+  explanation: string;
+  difficulty: "beginner" | "intermediate" | "advanced";
+};
+
 const ROADMAP_SYSTEM = `You are the Roadmap Creator agent for SKILLDREM.
 Given a learner goal, experience level, and preferences, output a JSON object ONLY (no markdown fences) with this shape:
 {
@@ -62,6 +73,27 @@ Rules:
 - Prefer free, legitimate learning paths.
 - Be realistic about hours.
 - No invented URLs.`;
+
+const PRACTICE_SYSTEM = `You are the Practice Coach for SKILLDREM.
+Generate a short practice set as JSON ONLY (no markdown fences):
+{
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple_choice" | "short_answer" | "coding",
+      "prompt": string,
+      "options": string[] (required for multiple_choice, 3–5 options),
+      "correctAnswer": string (for MCQ: exact option text; for others: model answer),
+      "explanation": string,
+      "difficulty": "beginner" | "intermediate" | "advanced"
+    }
+  ]
+}
+Rules:
+- 3–5 questions mixed types when the topic allows coding; otherwise MCQ + short answer.
+- Match the given difficulty and milestone topic.
+- Explanations must teach, not only reveal the answer.
+- No external URLs required.`;
 
 export async function knowledgeAnalystAndRoadmap(params: {
   goal: string;
@@ -145,22 +177,141 @@ export async function resourceScout(
     } catch {
       /* ignore */
     }
+    const pricing = guessPricingType(r.url, r.title, r.description);
     return {
       title: (r.title || provider || "Resource").slice(0, 300),
       description: (r.description || null)?.slice(0, 1000) ?? null,
       url: r.url,
       provider,
       resource_type: guessResourceType(r),
-      pricing_type: "unknown",
+      pricing_type: pricing.type,
       difficulty: null,
-      note: "From search — verify free/paid status on the source site",
+      note: pricing.note,
     };
   });
 
   return { resources };
 }
 
-function extractJson(text: string): Record<string, unknown> | null {
+export async function generatePracticeSet(params: {
+  topic: string;
+  description?: string | null;
+  difficulty?: string | null;
+  preferred?: "groq" | "gemini";
+}): Promise<PracticeQuestion[]> {
+  const { topic, description, difficulty, preferred } = params;
+  const messages: AIMessage[] = [
+    { role: "system", content: PRACTICE_SYSTEM },
+    {
+      role: "user",
+      content: [
+        `Topic: ${topic}`,
+        description ? `Context: ${description}` : "",
+        `Difficulty: ${difficulty || "beginner"}`,
+      ]
+        .filter(Boolean)
+        .join("\n"),
+    },
+  ];
+
+  const { text } = await completeWithFallback(messages, {
+    preferred: preferred ?? "groq",
+    temperature: 0.4,
+    maxTokens: 2000,
+  });
+
+  const json = extractJson(text);
+  const raw = Array.isArray(json?.questions) ? json!.questions : null;
+  if (!raw || raw.length < 1) {
+    throw new Error("Practice generator returned invalid structure");
+  }
+
+  return raw.slice(0, 6).map((q: Record<string, unknown>, i: number) => {
+    const type =
+      q.type === "coding" || q.type === "short_answer" || q.type === "multiple_choice"
+        ? q.type
+        : "short_answer";
+    const options = Array.isArray(q.options)
+      ? q.options.map(String).slice(0, 6)
+      : undefined;
+    return {
+      id: String(q.id || `q${i + 1}`).slice(0, 32),
+      type,
+      prompt: String(q.prompt || "Practice question").slice(0, 2000),
+      options: type === "multiple_choice" ? options : undefined,
+      correctAnswer: String(q.correctAnswer || "").slice(0, 2000),
+      explanation: String(q.explanation || "").slice(0, 2000),
+      difficulty: normalizeMilestoneDifficulty(q.difficulty),
+    } as PracticeQuestion;
+  });
+}
+
+/** Known hosts that are generally free educational content — never over-claim. */
+export function guessPricingType(
+  url: string,
+  title?: string | null,
+  description?: string | null
+): { type: string; note: string } {
+  const host = (() => {
+    try {
+      return new URL(url).hostname.toLowerCase().replace(/^www\./, "");
+    } catch {
+      return "";
+    }
+  })();
+  const blob = `${title ?? ""} ${description ?? ""}`.toLowerCase();
+
+  const freeHosts =
+    /^(developer\.mozilla\.org|mdn\.|docs\.python\.org|react\.dev|nodejs\.org|typescriptlang\.org|freecodecamp\.org|khanacademy\.org|ocw\.mit\.edu|cs50\.harvard\.edu|web\.mit\.edu|github\.com|gitlab\.com|wikipedia\.org|w3schools\.com|devdocs\.io|learn\.microsoft\.com|cloud\.google\.com\/.*\/docs)/i;
+
+  if (
+    freeHosts.test(host) ||
+    host.endsWith(".edu") ||
+    host.includes("freecodecamp") ||
+    host.includes("khanacademy") ||
+    host.includes("mozilla.org")
+  ) {
+    return {
+      type: "completely_free",
+      note: "Likely free educational content (known open/docs host) — still verify on the site",
+    };
+  }
+
+  if (host.includes("youtube.com") || host === "youtu.be") {
+    return {
+      type: "completely_free",
+      note: "YouTube video — free to watch (ads may appear); verify channel/content",
+    };
+  }
+
+  if (host.includes("coursera.org") || host.includes("edx.org")) {
+    return {
+      type: "free_audit",
+      note: "Platform often offers free audit — certificate or graded tracks may be paid",
+    };
+  }
+
+  if (host.includes("udemy.com") || host.includes("pluralsight.com")) {
+    return {
+      type: "paid",
+      note: "Typically paid platform — do not assume free access",
+    };
+  }
+
+  if (/\bfree\b/.test(blob) && !/\b(premium|paid|subscribe)\b/.test(blob)) {
+    return {
+      type: "unknown",
+      note: "Snippet mentions free — verify free/paid status on the source site",
+    };
+  }
+
+  return {
+    type: "unknown",
+    note: "From search — verify free/paid status on the source site",
+  };
+}
+
+export function extractJson(text: string): Record<string, unknown> | null {
   const trimmed = text.trim();
   const fence = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
   const raw = fence ? fence[1].trim() : trimmed;
