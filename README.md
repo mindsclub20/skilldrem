@@ -3,19 +3,31 @@
 **Smart Learning Roadmap Curator**  
 *Find your knowledge. Find your tools. Find your path.*
 
+Production: https://skilldrem.vercel.app  
+Repo: https://github.com/mindsclub20/skilldrem  
+Branch: `main`
+
 ## Stack
 
 - **Next.js 15** (App Router) + TypeScript + Tailwind CSS 4
-- **Supabase** Auth + Postgres + RLS (project `lxlbuljcecratjypmoxi`, region eu-west-1)
-- **@xyflow/react** for interactive Georny graphs
-- Deploy target: **Vercel** (not configured in this phase)
+- **Supabase** Auth + Postgres + RLS (project `lxlbuljcecratjypmoxi`, eu-west-1)
+- **Groq** primary LLM, **Gemini** fallback, optional **Firecrawl** search
+- **@xyflow/react** for Georny graphs
+- Deploy: **Vercel**
 
 ## Environment
 
 ```env
 NEXT_PUBLIC_SUPABASE_URL=https://lxlbuljcecratjypmoxi.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=<publishable/anon key from Supabase dashboard>
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<supabase anon key>
+
+# Server-only (never NEXT_PUBLIC_)
+GROQ_API_KEY=
+GEMINI_API_KEY=
+FIRECRAWL_API_KEY=
 ```
+
+On Vercel, if `NEXT_PUBLIC_SUPABASE_ANON_KEY` is restricted, set `SUPABASE_ANON_KEY` — `next.config.ts` maps it for the client.
 
 Never commit the service-role key. Never expose it in client bundles.
 
@@ -23,43 +35,37 @@ Never commit the service-role key. Never expose it in client bundles.
 
 ```bash
 npm install
-cp .env.local.example .env.local   # fill anon key
+cp .env.local.example .env.local   # fill keys
 npm run dev
+npm test
+npm run typecheck
+npm run build
 ```
 
-## What is implemented
+## Features (current)
 
 | Area | Status |
 |------|--------|
-| Database schema (22 tables) + RLS | Done (Supabase) |
-| Seed: 2 Geornies + 8 resources | Done |
 | Auth (signup/login/logout/callback) | Done |
-| Onboarding → user_preferences | Done |
-| Landing + design system | Done |
-| Dashboard | Done |
-| Discover / Courses / Books / Mentors | Done |
-| Georny list + detail + React Flow graph | Done |
-| Admin CMS (server-side is_admin check) | Done |
-| AI provider abstraction (stub, no live keys) | Done |
-| Vercel project / production deploy | **Not done — hand off** |
+| Onboarding + preferences | Done |
+| Dashboard + recent AI chats | Done |
+| Discover (budget + free-first paths) | Done |
+| AI Assistant (persistent multi-chat) | Done |
+| Markdown rendering (sanitized) | Done |
+| Search rank/filter for Discover | Done |
+| Geornies + React Flow | Done |
+| Courses / Books / Mentors | Done |
+| Admin CMS | Done |
+| RLS on `ai_sessions` (user-owned) | Done |
 
-## Supabase migrations applied
+## Supabase notes
 
-1. `enable_pg_trgm`
-2. `initial_skilldrem_schema`
-3. `seed_demo_georny_and_resources`
+- Schema + RLS applied on project `lxlbuljcecratjypmoxi`
+- `ai_sessions` has `title`, messages jsonb, RLS: `auth.uid() = user_id`
+- Auth redirect after deploy:
+  - Site URL: `https://skilldrem.vercel.app`
+  - Redirect: `https://skilldrem.vercel.app/auth/callback`
 
-## Auth redirect URLs to configure in Supabase
-
-After Vercel deploy, add to Supabase Auth → URL configuration:
-
-- Site URL: production URL
-- Redirect: `https://<prod>/auth/callback`
-
-## Admin access
-
-Set `profiles.is_admin = true` for a user id (SQL) or insert into `admin_roles`.
-
-## License / content policy
+## Content policy
 
 Only legitimate free/open/paid resource links. No piracy facilitation.
