@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { MarkdownMessage } from "@/components/ai/MarkdownMessage";
 
 type Msg = { role: "user" | "assistant"; content: string; provider?: string };
@@ -22,6 +23,7 @@ const SUGGESTIONS = [
 ];
 
 export default function AssistantPage() {
+  const searchParams = useSearchParams();
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Msg[]>([]);
   const [loading, setLoading] = useState(false);
@@ -36,6 +38,7 @@ export default function AssistantPage() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const sendingRef = useRef(false);
+  const openedFromQuery = useRef(false);
 
   const loadConversations = useCallback(async () => {
     try {
@@ -50,9 +53,35 @@ export default function AssistantPage() {
     }
   }, []);
 
+  const openConversation = useCallback(async (id: string) => {
+    setError(null);
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/ai/conversations?id=${encodeURIComponent(id)}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to load");
+      const msgs = (data.conversation?.messages ?? []) as Msg[];
+      setMessages(msgs.filter((m) => m.role === "user" || m.role === "assistant"));
+      setConversationId(id);
+      setSidebarOpen(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load chat");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     void loadConversations();
   }, [loadConversations]);
+
+  useEffect(() => {
+    const c = searchParams.get("c");
+    if (c && !openedFromQuery.current) {
+      openedFromQuery.current = true;
+      void openConversation(c);
+    }
+  }, [searchParams, openConversation]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -63,26 +92,6 @@ export default function AssistantPage() {
     if (!el) return;
     el.style.height = "auto";
     el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
-  }
-
-  async function openConversation(id: string) {
-    setError(null);
-    setLoading(true);
-    try {
-      const res = await fetch(`/api/ai/conversations?id=${encodeURIComponent(id)}`);
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to load");
-      const msgs = (data.conversation?.messages ?? []) as Msg[];
-      setMessages(
-        msgs.filter((m) => m.role === "user" || m.role === "assistant")
-      );
-      setConversationId(id);
-      setSidebarOpen(false);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load chat");
-    } finally {
-      setLoading(false);
-    }
   }
 
   async function deleteConversation(id: string) {
@@ -96,7 +105,7 @@ export default function AssistantPage() {
         const data = await res.json();
         throw new Error(data.error || "Delete failed");
       }
-      setConversations((c) => c.filter((x) => x.id !== id));
+      setConversations((list) => list.filter((x) => x.id !== id));
       if (conversationId === id) {
         setConversationId(null);
         setMessages([]);
@@ -116,7 +125,6 @@ export default function AssistantPage() {
 
     let baseMessages = messages;
     if (opts?.regenerate) {
-      // Drop last assistant reply for regenerate
       const copy = [...messages];
       if (copy.length && copy[copy.length - 1].role === "assistant") copy.pop();
       baseMessages = copy;
@@ -229,9 +237,7 @@ export default function AssistantPage() {
                 className="flex-1 text-left min-w-0"
                 onClick={() => void openConversation(c.id)}
               >
-                <span className="block truncate font-medium">
-                  {c.title || "Chat"}
-                </span>
+                <span className="block truncate font-medium">{c.title || "Chat"}</span>
                 <span className="block text-[10px] text-muted-foreground">
                   {new Date(c.updated_at).toLocaleString()}
                 </span>
@@ -300,13 +306,9 @@ export default function AssistantPage() {
           >
             Menu
           </button>
-          <span className="text-sm font-medium text-muted-foreground truncate">
-            Learning chat
-          </span>
+          <span className="text-sm font-medium text-muted-foreground truncate">Learning chat</span>
           {saving && (
-            <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
-              Saving…
-            </span>
+            <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Saving…</span>
           )}
           <div className="ml-auto flex gap-2">
             <button
@@ -321,7 +323,9 @@ export default function AssistantPage() {
               type="button"
               className="text-xs rounded-lg border border-border px-2 py-1 hover:bg-muted disabled:opacity-40"
               disabled={loading || !lastUserMessage}
-              onClick={() => lastUserMessage && void sendMessage(lastUserMessage, { regenerate: true })}
+              onClick={() =>
+                lastUserMessage && void sendMessage(lastUserMessage, { regenerate: true })
+              }
             >
               Regenerate
             </button>
@@ -415,10 +419,7 @@ export default function AssistantPage() {
         </div>
 
         <div className="border-t border-border/60 bg-background/70 backdrop-blur-md shrink-0">
-          <form
-            onSubmit={onSubmit}
-            className="mx-auto max-w-3xl px-3 sm:px-4 py-3 sm:py-4"
-          >
+          <form onSubmit={onSubmit} className="mx-auto max-w-3xl px-3 sm:px-4 py-3 sm:py-4">
             <div className="rounded-2xl border border-border bg-card shadow-sm focus-within:ring-2 focus-within:ring-ring/40 transition-shadow">
               <textarea
                 ref={textareaRef}
