@@ -6,8 +6,10 @@ import { createClient } from "@/lib/supabase/server";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-const SYSTEM = `You are SKILLDREM, a friendly and practical AI learning teammate.
+const SYSTEM = `You are SKILLDREM, a friendly and practical AI learning teammate and mentor.
 You help users plan study paths, pick free vs paid resources carefully, explain concepts simply, and stay motivated.
+
+When the user message includes a [Learning context] block, treat it as the learner's current roadmap and milestone. Teach at the appropriate level, reference the current milestone, and recommend the next concrete action.
 
 Rules:
 - Be conversational and clear — like a fast chat assistant.
@@ -50,7 +52,7 @@ export async function POST(request: Request) {
     };
 
     const message = body.message?.trim();
-    if (!message || message.length > 8000) {
+    if (!message || message.length > 12000) {
       return NextResponse.json({ error: "Invalid message" }, { status: 400 });
     }
 
@@ -77,7 +79,6 @@ export async function POST(request: Request) {
       );
     }
 
-    // Prefer server-side history when conversation is known; else client history (capped)
     const historySource =
       conversationId && existingMessages.length
         ? existingMessages
@@ -104,9 +105,14 @@ export async function POST(request: Request) {
       maxTokens: 2048,
     });
 
+    // Store user-visible message without internal context prefix for history cleanliness
+    const displayUser = message.includes("[User]\n")
+      ? message.split("[User]\n").slice(-1)[0] || message
+      : message;
+
     const nextMessages: ChatMsg[] = [
       ...history,
-      { role: "user", content: message },
+      { role: "user", content: displayUser },
       { role: "assistant", content: text },
     ];
 
@@ -124,7 +130,7 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: updErr.message }, { status: 500 });
       }
     } else {
-      const title = titleFromMessage(message);
+      const title = titleFromMessage(displayUser);
       const { data: inserted, error: insErr } = await supabase
         .from("ai_sessions")
         .insert({
