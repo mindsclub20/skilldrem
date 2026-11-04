@@ -137,7 +137,7 @@ export default async function DashboardPage() {
               {recentChats.map((c) => (
                 <li key={c.id}>
                   <Link
-                    href="/assistant"
+                    href={`/assistant?c=${c.id}`}
                     className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-muted/50 transition-colors"
                   >
                     <span className="font-medium text-sm truncate">{c.title || "Chat"}</span>
