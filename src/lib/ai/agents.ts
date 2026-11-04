@@ -186,7 +186,7 @@ function normalizeDifficulty(
 
 function normalizeMilestoneDifficulty(
   d: unknown
-): "beginner" | intermediate" | "advanced" {
+): "beginner" | "intermediate" | "advanced" {
   const s = String(d || "beginner").toLowerCase();
   if (s.includes("advanced")) return "advanced";
   if (s.includes("inter")) return "intermediate";
