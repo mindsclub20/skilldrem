@@ -6,10 +6,10 @@ import Link from "next/link";
 type Msg = { role: "user" | "assistant"; content: string; provider?: string };
 
 const SUGGESTIONS = [
-  "Build me a 4-week plan to learn Python from zero",
-  "What free resources should I use for web development?",
-  "Explain React hooks simply with examples",
-  "How do I prepare for a junior developer interview?",
+  "Build me a free-only 4-week plan to learn Python from zero",
+  "What free websites and resources should I use for web development?",
+  "Explain React hooks simply with free practice links",
+  "Free path vs paid course — which is better for junior developer interviews?",
 ];
 
 export default function AssistantPage() {
@@ -87,7 +87,6 @@ export default function AssistantPage() {
 
   return (
     <div className="h-[100dvh] flex bg-transparent text-foreground">
-      {/* Sidebar */}
       <aside
         className={`fixed inset-y-0 left-0 z-40 w-64 border-r border-border bg-card/95 backdrop-blur-md flex flex-col transition-transform md:static md:translate-x-0 ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
@@ -153,7 +152,6 @@ export default function AssistantPage() {
         />
       )}
 
-      {/* Main chat */}
       <div className="flex-1 flex flex-col min-w-0 relative">
         <header className="h-12 flex items-center gap-3 px-3 border-b border-border/60 md:border-none">
           <button
@@ -176,7 +174,7 @@ export default function AssistantPage() {
                 What do you want to learn?
               </h1>
               <p className="mt-2 text-sm text-muted-foreground text-center max-w-md">
-                Chat with SKILLDREM — powered by Groq (with Gemini fallback). Ask for plans, explanations, or free resources.
+                Chat with SKILLDREM — free resources first. Ask for plans, free websites, or whether paid is worth it.
               </p>
               <div className="mt-8 grid w-full max-w-2xl gap-2 sm:grid-cols-2">
                 {SUGGESTIONS.map((s) => (
@@ -244,7 +242,6 @@ export default function AssistantPage() {
           )}
         </div>
 
-        {/* Composer */}
         <div className="border-t border-border/60 bg-background/70 backdrop-blur-md">
           <form
             onSubmit={onSubmit}
