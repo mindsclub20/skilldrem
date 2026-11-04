@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 import { MarkdownMessage } from "@/components/ai/MarkdownMessage";
 
 type Msg = { role: "user" | "assistant"; content: string; provider?: string };
@@ -23,7 +22,6 @@ const SUGGESTIONS = [
 ];
 
 export default function AssistantPage() {
-  const searchParams = useSearchParams();
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Msg[]>([]);
   const [loading, setLoading] = useState(false);
@@ -47,7 +45,7 @@ export default function AssistantPage() {
       const data = await res.json();
       setConversations(data.conversations ?? []);
     } catch {
-      /* ignore list errors on load */
+      /* ignore */
     } finally {
       setLoadingList(false);
     }
@@ -76,12 +74,13 @@ export default function AssistantPage() {
   }, [loadConversations]);
 
   useEffect(() => {
-    const c = searchParams.get("c");
-    if (c && !openedFromQuery.current) {
+    if (openedFromQuery.current || typeof window === "undefined") return;
+    const c = new URLSearchParams(window.location.search).get("c");
+    if (c) {
       openedFromQuery.current = true;
       void openConversation(c);
     }
-  }, [searchParams, openConversation]);
+  }, [openConversation]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -216,12 +215,8 @@ export default function AssistantPage() {
           </button>
         </div>
         <div className="flex-1 overflow-y-auto p-2 space-y-1">
-          <p className="px-2 text-[11px] uppercase tracking-wide text-muted-foreground mb-1">
-            History
-          </p>
-          {loadingList && (
-            <p className="px-2 text-xs text-muted-foreground">Loading…</p>
-          )}
+          <p className="px-2 text-[11px] uppercase tracking-wide text-muted-foreground mb-1">History</p>
+          {loadingList && <p className="px-2 text-xs text-muted-foreground">Loading…</p>}
           {!loadingList && conversations.length === 0 && (
             <p className="px-2 text-xs text-muted-foreground">No saved chats yet.</p>
           )}
@@ -253,9 +248,7 @@ export default function AssistantPage() {
             </div>
           ))}
           <div className="border-t border-border mt-3 pt-3 space-y-1">
-            <p className="px-2 text-[11px] uppercase tracking-wide text-muted-foreground mb-1">
-              Explore
-            </p>
+            <p className="px-2 text-[11px] uppercase tracking-wide text-muted-foreground mb-1">Explore</p>
             <Link href="/discover" className="block rounded-lg px-3 py-2 hover:bg-muted text-sm">
               Discover paths
             </Link>
@@ -362,9 +355,7 @@ export default function AssistantPage() {
               {messages.map((m, i) => (
                 <div
                   key={i}
-                  className={`flex gap-3 ${
-                    m.role === "user" ? "justify-end" : "justify-start"
-                  }`}
+                  className={`flex gap-3 ${m.role === "user" ? "justify-end" : "justify-start"}`}
                 >
                   {m.role === "assistant" && (
                     <div className="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground text-xs font-bold">
@@ -384,9 +375,7 @@ export default function AssistantPage() {
                       m.content
                     )}
                     {m.provider && m.role === "assistant" && (
-                      <p className="mt-2 text-[10px] uppercase tracking-wider opacity-50">
-                        {m.provider}
-                      </p>
+                      <p className="mt-2 text-[10px] uppercase tracking-wider opacity-50">{m.provider}</p>
                     )}
                   </div>
                 </div>
