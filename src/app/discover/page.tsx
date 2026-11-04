@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { MarkdownMessage } from "@/components/ai/MarkdownMessage";
 
 type Resource = {
   title: string | null;
@@ -94,25 +95,25 @@ export default function DiscoverPage() {
   }
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen overflow-x-hidden">
       <header className="border-b border-border sticky top-0 bg-background/80 backdrop-blur z-40">
-        <div className="mx-auto max-w-6xl h-14 flex items-center justify-between px-4">
-          <Link href="/" className="font-semibold">
+        <div className="mx-auto max-w-6xl h-14 flex items-center justify-between px-4 gap-3">
+          <Link href="/" className="font-semibold shrink-0">
             SKILLDREM
           </Link>
-          <div className="flex gap-4 text-sm text-muted-foreground">
-            <Link href="/assistant" className="hover:text-foreground">
+          <div className="flex gap-3 sm:gap-4 text-sm text-muted-foreground overflow-x-auto">
+            <Link href="/assistant" className="hover:text-foreground whitespace-nowrap">
               Assistant
             </Link>
-            <Link href="/dashboard" className="hover:text-foreground">
+            <Link href="/dashboard" className="hover:text-foreground whitespace-nowrap">
               Dashboard
             </Link>
           </div>
         </div>
       </header>
-      <main className="mx-auto max-w-3xl px-4 py-12">
+      <main className="mx-auto max-w-3xl px-4 py-8 sm:py-12">
         <h1 className="text-2xl font-bold">Learning discovery</h1>
-        <p className="mt-2 text-muted-foreground">
+        <p className="mt-2 text-muted-foreground text-sm sm:text-base">
           Tell us what you want to learn and whether you want free-only or paid options.
           We search the public web and build a path that leads with free sources.
         </p>
@@ -181,7 +182,7 @@ export default function DiscoverPage() {
           <button
             type="submit"
             disabled={loading}
-            className="h-12 rounded-xl bg-primary px-6 text-primary-foreground font-medium disabled:opacity-60"
+            className="h-12 w-full sm:w-auto rounded-xl bg-primary px-6 text-primary-foreground font-medium disabled:opacity-60"
           >
             {loading ? "Searching free sources & planning…" : "Generate free-first path"}
           </button>
@@ -205,7 +206,7 @@ export default function DiscoverPage() {
                     href={r.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="font-medium text-accent hover:underline"
+                    className="font-medium text-accent hover:underline break-all"
                   >
                     {r.title || r.url}
                   </a>
@@ -223,7 +224,7 @@ export default function DiscoverPage() {
         )}
 
         {plan && (
-          <div className="mt-8 rounded-2xl border border-border bg-card p-6">
+          <div className="mt-8 rounded-2xl border border-border bg-card p-4 sm:p-6 overflow-x-hidden">
             <div className="flex flex-wrap items-center gap-2 mb-3">
               {provider && (
                 <p className="text-xs uppercase tracking-wide text-accent">via {provider}</p>
@@ -234,7 +235,7 @@ export default function DiscoverPage() {
                 </span>
               )}
             </div>
-            <pre className="whitespace-pre-wrap text-sm font-sans leading-relaxed">{plan}</pre>
+            <MarkdownMessage content={plan} />
 
             <div className="mt-6 pt-5 border-t border-border">
               <p className="text-sm font-medium mb-2">Want a different budget?</p>
