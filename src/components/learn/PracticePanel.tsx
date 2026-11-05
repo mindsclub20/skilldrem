@@ -18,12 +18,21 @@ type PracticeResult = {
   yourAnswer: string;
 };
 
+type AdaptHint = {
+  shouldAdapt: boolean;
+  message?: string;
+  userJourneyId?: string;
+  milestoneId?: string;
+  topic?: string;
+};
+
 type Props = {
   topic: string;
   description?: string | null;
   difficulty?: string | null;
   milestoneId?: string | null;
   userJourneyId?: string | null;
+  onAdapted?: () => void;
 };
 
 export function PracticePanel({
@@ -32,6 +41,7 @@ export function PracticePanel({
   difficulty,
   milestoneId,
   userJourneyId,
+  onAdapted,
 }: Props) {
   const [practiceQs, setPracticeQs] = useState<PracticeQ[]>([]);
   const [practiceAnswers, setPracticeAnswers] = useState<Record<string, string>>({});
@@ -42,6 +52,10 @@ export function PracticePanel({
   const [practiceScore, setPracticeScore] = useState<{ score: number; maxScore: number } | null>(
     null
   );
+  const [adaptHint, setAdaptHint] = useState<AdaptHint | null>(null);
+  const [adaptLoading, setAdaptLoading] = useState(false);
+  const [adaptMsg, setAdaptMsg] = useState<string | null>(null);
+  const [weakTopics, setWeakTopics] = useState<string[]>([]);
   const [practiceHistory, setPracticeHistory] = useState<
     {
       id: string;
@@ -78,6 +92,9 @@ export function PracticePanel({
     setPracticeError(null);
     setPracticeResults(null);
     setPracticeScore(null);
+    setAdaptHint(null);
+    setAdaptMsg(null);
+    setWeakTopics([]);
     setPracticeAnswers({});
     try {
       const res = await fetch("/api/ai/practice", {
@@ -95,7 +112,6 @@ export function PracticePanel({
       if (!res.ok) throw new Error(data.error || "Failed to generate practice");
       setPracticeSessionId(data.sessionId);
       setPracticeQs(data.questions ?? []);
-      // refresh history
       const h = await fetch(
         milestoneId
           ? `/api/ai/practice?milestoneId=${encodeURIComponent(milestoneId)}`
@@ -129,10 +145,43 @@ export function PracticePanel({
       if (!res.ok) throw new Error(data.error || "Submit failed");
       setPracticeResults(data.results ?? []);
       setPracticeScore({ score: data.score, maxScore: data.maxScore });
+      setWeakTopics(data.weakTopics ?? []);
+      setAdaptHint(data.adaptHint ?? null);
     } catch (e) {
       setPracticeError(e instanceof Error ? e.message : "Failed");
     } finally {
       setPracticeLoading(false);
+    }
+  }
+
+  async function addRemedial() {
+    if (!adaptHint?.shouldAdapt || !adaptHint.userJourneyId || !adaptHint.milestoneId) return;
+    setAdaptLoading(true);
+    setAdaptMsg(null);
+    try {
+      const res = await fetch("/api/ai/adapt", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userJourneyId: adaptHint.userJourneyId,
+          milestoneId: adaptHint.milestoneId,
+          weakTopics,
+          practiceSessionId: practiceSessionId,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Adapt failed");
+      setAdaptMsg(
+        data.skipped
+          ? data.message || "Remedial already present"
+          : `Added remedial checkpoint: ${data.milestone?.title || "Review"}`
+      );
+      setAdaptHint(null);
+      onAdapted?.();
+    } catch (e) {
+      setPracticeError(e instanceof Error ? e.message : "Adapt failed");
+    } finally {
+      setAdaptLoading(false);
     }
   }
 
@@ -174,6 +223,20 @@ export function PracticePanel({
           Score: {practiceScore.score} / {practiceScore.maxScore}
         </p>
       )}
+      {adaptHint?.shouldAdapt && (
+        <div className="mt-4 rounded-xl border border-accent/40 bg-accent/5 p-4 text-sm">
+          <p className="font-medium">{adaptHint.message}</p>
+          <button
+            type="button"
+            disabled={adaptLoading}
+            onClick={() => void addRemedial()}
+            className="mt-3 rounded-full bg-accent px-3 py-1.5 text-xs font-medium text-accent-foreground disabled:opacity-40"
+          >
+            {adaptLoading ? "Updating roadmap…" : "Add remedial checkpoint"}
+          </button>
+        </div>
+      )}
+      {adaptMsg && <p className="mt-3 text-sm text-accent">{adaptMsg}</p>}
       <ul className="mt-6 space-y-4">
         {practiceQs.map((q, idx) => {
           const result = practiceResults?.find((r) => r.id === q.id);
@@ -230,9 +293,7 @@ export function PracticePanel({
                   }`}
                 >
                   <p className="font-medium">{result.correct ? "Correct" : "Not quite"}</p>
-                  {!result.correct && (
-                    <p className="mt-1">Expected: {result.correctAnswer}</p>
-                  )}
+                  {!result.correct && <p className="mt-1">Expected: {result.correctAnswer}</p>}
                   {result.explanation && (
                     <p className="mt-1 text-muted-foreground">{result.explanation}</p>
                   )}

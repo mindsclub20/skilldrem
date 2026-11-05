@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { recommendNextAction, type LearningContext } from "@/lib/ai/orchestrator";
 import { createClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
@@ -32,7 +33,6 @@ export async function POST(request: Request) {
       );
     }
 
-    // Ownership check
     const { data: uj } = await supabase
       .from("user_journeys")
       .select("id, journey_id")
@@ -59,7 +59,6 @@ export async function POST(request: Request) {
       { onConflict: "user_id,milestone_id" }
     );
 
-    // Fallback if unique constraint name differs — try update then insert
     if (upErr) {
       const { data: existing } = await supabase
         .from("learner_progress")
@@ -90,7 +89,6 @@ export async function POST(request: Request) {
       }
     }
 
-    // Recompute progress
     const { data: allMs } = await supabase
       .from("milestones")
       .select("id")
@@ -126,7 +124,7 @@ export async function POST(request: Request) {
   }
 }
 
-/** Get progress + milestones + resources for a user_journey. */
+/** Get progress + milestones + resources + nextAction for a user_journey. */
 export async function GET(request: Request) {
   try {
     const supabase = await createClient();
@@ -182,12 +180,10 @@ export async function GET(request: Request) {
       .eq("user_id", user.id)
       .eq("user_journey_id", userJourneyId);
 
-    const progressMap = new Map(
-      (progress ?? []).map((p) => [p.milestone_id, p])
-    );
+    const progressMap = new Map((progress ?? []).map((p) => [p.milestone_id, p]));
 
     const msIds = (milestones ?? []).map((m) => m.id);
-    let resourcesByMs: Record<string, unknown[]> = {};
+    const resourcesByMs: Record<string, unknown[]> = {};
 
     if (msIds.length) {
       const { data: links } = await supabase
@@ -220,17 +216,90 @@ export async function GET(request: Request) {
       }
     }
 
+    const enriched = (milestones ?? []).map((m) => ({
+      ...m,
+      progress: progressMap.get(m.id) ?? {
+        status: "not_started",
+        completed_at: null,
+        notes: null,
+      },
+      resources: resourcesByMs[m.id] || [],
+    }));
+
+    const open =
+      enriched.find(
+        (m) => m.progress.status !== "completed" && m.progress.status !== "skipped"
+      ) ?? null;
+    const nextAfter = open
+      ? enriched.find(
+          (m) =>
+            m.position > open.position &&
+            m.progress.status !== "completed" &&
+            m.progress.status !== "skipped"
+        )
+      : null;
+
+    const { data: practice } = await supabase
+      .from("practice_sessions")
+      .select("topic, score, max_score, completed_at")
+      .eq("user_id", user.id)
+      .eq("user_journey_id", userJourneyId)
+      .not("completed_at", "is", null)
+      .order("completed_at", { ascending: false })
+      .limit(3);
+
+    const recent = practice?.[0];
+    const weakTopics: string[] = [];
+    for (const p of practice ?? []) {
+      if (p.max_score && Number(p.score) / Number(p.max_score) < 0.6) {
+        weakTopics.push(String(p.topic));
+      }
+    }
+
+    const journey = uj.journeys as {
+      title?: string;
+      target_outcome?: string;
+    } | null;
+
+    const resourceHints =
+      (open?.resources as { title?: string; url?: string; pricing_type?: string }[] | undefined)?.map(
+        (r) => ({
+          title: r.title || "Resource",
+          url: r.url,
+          pricing_type: r.pricing_type,
+        })
+      ) ?? [];
+
+    const ctx: LearningContext = {
+      userJourneyId: uj.id,
+      journeyTitle: journey?.title,
+      targetOutcome: journey?.target_outcome,
+      progressPercent: Number(uj.progress_percent ?? 0),
+      currentMilestone: open
+        ? {
+            id: open.id,
+            title: open.title,
+            description: open.description,
+            difficulty: (open.metadata as { difficulty?: string } | null)?.difficulty,
+          }
+        : null,
+      nextMilestone: nextAfter ? { id: nextAfter.id, title: nextAfter.title } : null,
+      weakTopics: [...new Set(weakTopics)].slice(0, 5),
+      recentPracticeScore: recent
+        ? {
+            score: Number(recent.score ?? 0),
+            maxScore: Number(recent.max_score ?? 0),
+            topic: String(recent.topic),
+          }
+        : null,
+      resourceHints,
+    };
+
     return NextResponse.json({
       enrollment: uj,
-      milestones: (milestones ?? []).map((m) => ({
-        ...m,
-        progress: progressMap.get(m.id) ?? {
-          status: "not_started",
-          completed_at: null,
-          notes: null,
-        },
-        resources: resourcesByMs[m.id] || [],
-      })),
+      milestones: enriched,
+      nextAction: recommendNextAction(ctx),
+      learningContext: ctx,
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Failed to load progress";
