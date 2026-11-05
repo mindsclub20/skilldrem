@@ -19,10 +19,9 @@ export default function HomePage() {
             SKILLDREM
           </Link>
           <nav className="hidden md:flex items-center gap-6 text-sm text-muted-foreground">
+            <Link href="/learn" className="hover:text-foreground transition-colors font-medium text-foreground">Learn</Link>
             <Link href="/discover" className="hover:text-foreground transition-colors">Discover</Link>
             <Link href="/courses" className="hover:text-foreground transition-colors">Courses</Link>
-            <Link href="/books" className="hover:text-foreground transition-colors">Books</Link>
-            <Link href="/mentors" className="hover:text-foreground transition-colors">AI Mentors</Link>
             <Link href="/georny" className="hover:text-foreground transition-colors">Geornies</Link>
           </nav>
           <div className="flex items-center gap-3">
@@ -38,7 +37,7 @@ export default function HomePage() {
           <div className="mx-auto max-w-3xl text-center">
             <p className="mb-4 inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-muted-foreground">
               <Sparkles className="h-3.5 w-3.5 text-accent" />
-              Smart Learning Roadmap Curator
+              Unified AI learning workspace
             </p>
             <h1 className="text-4xl font-bold tracking-tight text-foreground sm:text-5xl md:text-6xl">
               Find your knowledge.<br />
@@ -46,27 +45,32 @@ export default function HomePage() {
               Find your path.
             </h1>
             <p className="mt-6 text-lg text-muted-foreground max-w-xl mx-auto">
-              Discover free courses, open ebooks, AI mentors, and personalized learning journeys — all in one place.
+              Describe a goal. Get a personalized roadmap, free resources, an AI mentor, practice exercises, and progress tracking — in one workspace.
             </p>
-            <form action="/discover" className="mt-10 flex flex-col sm:flex-row gap-3 max-w-xl mx-auto">
-              <div className="relative flex-1">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                <input name="q" type="search" placeholder="What do you want to learn?" className="w-full h-12 rounded-xl border border-border bg-card pl-11 pr-4 text-base shadow-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring" aria-label="Search learning goals" />
-              </div>
-              <button type="submit" className="h-12 rounded-xl bg-primary px-6 font-medium text-primary-foreground hover:opacity-90 transition-opacity flex items-center justify-center gap-2">
-                Discover <ArrowRight className="h-4 w-4" />
-              </button>
-            </form>
+            <div className="mt-10 flex flex-col sm:flex-row gap-3 max-w-xl mx-auto justify-center">
+              <Link
+                href="/learn"
+                className="h-12 rounded-xl bg-primary px-6 font-medium text-primary-foreground hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
+              >
+                Start learning <ArrowRight className="h-4 w-4" />
+              </Link>
+              <Link
+                href="/discover"
+                className="h-12 rounded-xl border border-border bg-card px-6 font-medium hover:bg-muted transition-colors flex items-center justify-center gap-2"
+              >
+                <Search className="h-4 w-4" /> Discover paths
+              </Link>
+            </div>
           </div>
         </section>
 
         <section className="px-4 pb-20">
           <div className="mx-auto max-w-6xl grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {[
-              { icon: GraduationCap, title: "Free & paid courses", desc: "Accurately classified free, free-with-conditions, audit, and paid options.", href: "/courses" },
-              { icon: BookOpen, title: "Open ebooks", desc: "Public domain, open-access, and legitimate textbook sources only.", href: "/books" },
-              { icon: Bot, title: "AI mentors", desc: "Compare tools for explanations, coding, math, and study planning.", href: "/mentors" },
-              { icon: Map, title: "Geornies", desc: "Interactive visual roadmaps connecting goals, milestones, and resources.", href: "/georny" },
+              { icon: Map, title: "Personalized roadmaps", desc: "AI builds milestones with prerequisites and estimated time for your goal.", href: "/learn" },
+              { icon: GraduationCap, title: "Free-first resources", desc: "Search-backed materials with honest free / paid / unknown labels.", href: "/discover" },
+              { icon: Bot, title: "AI mentor", desc: "Context-aware tutoring tied to your current milestone.", href: "/learn" },
+              { icon: BookOpen, title: "Practice & progress", desc: "Exercises, quizzes, and milestone completion tracked in your account.", href: "/learn" },
             ].map((item) => (
               <Link key={item.title} href={item.href} className="group rounded-2xl border border-border bg-card p-6 shadow-sm hover:shadow-md hover:border-accent/40 transition-all">
                 <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-muted text-accent group-hover:bg-accent/10 transition-colors">
@@ -84,9 +88,9 @@ export default function HomePage() {
             <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">How SKILLDREM works</h2>
             <ol className="mt-10 grid gap-8 text-left sm:grid-cols-3">
               {[
-                { step: "1", title: "Tell us your goal", body: "Share what you want to learn, your experience, and constraints." },
-                { step: "2", title: "Get a Georny", body: "Receive a visual learning path with milestones and curated resources." },
-                { step: "3", title: "Track progress", body: "Save journeys, mark milestones complete, and see what to learn next." },
+                { step: "1", title: "Tell us your goal", body: "Share what you want to learn, your experience, and budget preference." },
+                { step: "2", title: "Get a roadmap", body: "Receive milestones plus search-discovered resources in one workspace." },
+                { step: "3", title: "Learn, practice, track", body: "Use the AI mentor, complete exercises, and mark milestones done." },
               ].map((s) => (
                 <li key={s.step}>
                   <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">{s.step}</span>
@@ -95,8 +99,8 @@ export default function HomePage() {
                 </li>
               ))}
             </ol>
-            <Link href="/auth/signup" className="mt-12 inline-flex h-11 items-center rounded-full bg-accent px-6 font-medium text-accent-foreground hover:opacity-90 transition-opacity">
-              Start your journey
+            <Link href="/learn" className="mt-12 inline-flex h-11 items-center rounded-full bg-accent px-6 font-medium text-accent-foreground hover:opacity-90 transition-opacity">
+              Open learning workspace
             </Link>
           </div>
         </section>
