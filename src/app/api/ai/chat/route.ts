@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { completeWithFallback, listConfiguredProviders, type AIMessage } from "@/lib/ai/provider";
 import { titleFromMessage } from "@/lib/ai/resource-filter";
+import { buildMentorSystemAddon, type LearningContext } from "@/lib/ai/orchestrator";
 import { createClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
@@ -9,7 +10,13 @@ export const maxDuration = 60;
 const SYSTEM = `You are SKILLDREM, a friendly and practical AI learning teammate and mentor.
 You help users plan study paths, pick free vs paid resources carefully, explain concepts simply, and stay motivated.
 
-When the user message includes a [Learning context] block, treat it as the learner's current roadmap and milestone. Teach at the appropriate level, reference the current milestone, and recommend the next concrete action.
+When extra learning context is provided in the system message, treat it as authoritative for the current session.
+Teach at the appropriate level, reference the current milestone, and recommend the next concrete action.
+
+Teaching style:
+1) Short explanation
+2) One concrete example
+3) One check question or mini exercise
 
 Rules:
 - Be conversational and clear — like a fast chat assistant.
@@ -17,12 +24,11 @@ Rules:
 - Default to FREE resources and free websites (MDN, freeCodeCamp, official docs, Khan Academy, YouTube, GitHub, OpenCourseWare, W3Schools, etc.).
 - When recommending a resource, use this format for each item:
   **Title** — Platform — [FREE|FREEMIUM|PAID|UNKNOWN] — Level: beginner|intermediate|advanced
-  URL: https://... (only real, known public URLs; never invent links)
+  URL: https://... (only real, known public URLs from context or well-known docs; never invent links)
   Why: one short sentence
-- Never invent course prices or claim something is free without evidence. If unsure, say so and suggest how the learner can verify on the source site.
-- Interactively ask about budget when it matters: e.g. "Do you want free-only resources, or is a paid course OK if it saves time?"
+- Never invent course prices or claim something is free without evidence.
 - Prefer actionable next steps the user can start in the next 30–60 minutes with a free resource.
-- Never invent specific URLs or course names you cannot verify; prefer well-known platform names when linking is uncertain.`;
+- Never invent specific URLs or course names you cannot verify.`;
 
 type ChatMsg = { role: "user" | "assistant"; content: string };
 
@@ -49,6 +55,7 @@ export async function POST(request: Request) {
       history?: AIMessage[];
       preferred?: "groq" | "gemini";
       conversationId?: string | null;
+      learningContext?: LearningContext | null;
     };
 
     const message = body.message?.trim();
@@ -93,10 +100,21 @@ export async function POST(request: Request) {
 
     const history = historySource.slice(-20);
 
+    const systemParts = [SYSTEM];
+    if (body.learningContext && typeof body.learningContext === "object") {
+      systemParts.push(buildMentorSystemAddon(body.learningContext));
+    }
+
+    // Support legacy inline [Learning context] blocks from the client
+    let userContent = message;
+    if (message.includes("[Learning context]") && message.includes("[User]")) {
+      userContent = message.split("[User]\n").slice(-1)[0] || message;
+    }
+
     const messages: AIMessage[] = [
-      { role: "system", content: SYSTEM },
+      { role: "system", content: systemParts.join("\n\n") },
       ...history,
-      { role: "user", content: message },
+      { role: "user", content: userContent },
     ];
 
     const { text, provider } = await completeWithFallback(messages, {
@@ -105,10 +123,7 @@ export async function POST(request: Request) {
       maxTokens: 2048,
     });
 
-    // Store user-visible message without internal context prefix for history cleanliness
-    const displayUser = message.includes("[User]\n")
-      ? message.split("[User]\n").slice(-1)[0] || message
-      : message;
+    const displayUser = userContent;
 
     const nextMessages: ChatMsg[] = [
       ...history,
@@ -123,6 +138,9 @@ export async function POST(request: Request) {
           messages: nextMessages,
           provider,
           updated_at: new Date().toISOString(),
+          metadata: body.learningContext
+            ? { learningContext: body.learningContext }
+            : undefined,
         })
         .eq("id", conversationId)
         .eq("user_id", user.id);
@@ -139,6 +157,9 @@ export async function POST(request: Request) {
           session_type: "chat",
           title,
           messages: nextMessages,
+          metadata: body.learningContext
+            ? { learningContext: body.learningContext }
+            : {},
         })
         .select("id")
         .single();

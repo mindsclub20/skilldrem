@@ -22,6 +22,7 @@ export async function POST(request: Request) {
       difficulty?: string;
       milestoneId?: string;
       userJourneyId?: string;
+      weakTopics?: string[];
       preferred?: "groq" | "gemini";
     };
 
@@ -46,6 +47,7 @@ export async function POST(request: Request) {
       topic,
       description: body.description,
       difficulty: body.difficulty,
+      weakTopics: body.weakTopics,
       preferred: body.preferred,
     });
 
@@ -71,7 +73,6 @@ export async function POST(request: Request) {
       );
     }
 
-    // Do not send correct answers to the client until submit
     const clientQuestions = questions.map((q) => ({
       id: q.id,
       type: q.type,
@@ -116,7 +117,7 @@ export async function PUT(request: Request) {
 
     const { data: session, error } = await supabase
       .from("practice_sessions")
-      .select("id, questions, max_score")
+      .select("id, questions, max_score, topic, milestone_id, user_journey_id")
       .eq("id", sessionId)
       .eq("user_id", user.id)
       .maybeSingle();
@@ -134,6 +135,7 @@ export async function PUT(request: Request) {
     }[];
 
     let score = 0;
+    const weakTopics: string[] = [];
     const results = questions.map((q) => {
       const given = String(body.answers![q.id] ?? "").trim();
       const expected = String(q.correctAnswer ?? "").trim();
@@ -145,6 +147,7 @@ export async function PUT(request: Request) {
               expected.toLowerCase().includes(given.toLowerCase()) ||
               given.toLowerCase().includes(expected.toLowerCase().slice(0, 40)));
       if (ok) score += 1;
+      else weakTopics.push(q.prompt.slice(0, 80));
       return {
         id: q.id,
         correct: ok,
@@ -155,6 +158,7 @@ export async function PUT(request: Request) {
     });
 
     const maxScore = Number(session.max_score) || questions.length;
+    const ratio = maxScore > 0 ? score / maxScore : 1;
 
     await supabase
       .from("practice_sessions")
@@ -172,6 +176,18 @@ export async function PUT(request: Request) {
       score,
       maxScore,
       results,
+      weakTopics: weakTopics.slice(0, 5),
+      adaptHint:
+        ratio < 0.5 && session.milestone_id && session.user_journey_id
+          ? {
+              shouldAdapt: true,
+              message:
+                "Score below 50%. You can add a remedial checkpoint to your roadmap.",
+              userJourneyId: session.user_journey_id,
+              milestoneId: session.milestone_id,
+              topic: session.topic,
+            }
+          : { shouldAdapt: false },
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Submit failed";

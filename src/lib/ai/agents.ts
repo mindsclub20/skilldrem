@@ -41,7 +41,6 @@ export type PracticeQuestion = {
   type: "multiple_choice" | "short_answer" | "coding";
   prompt: string;
   options?: string[];
-  /** Index into options for MCQ; model answer for short/coding */
   correctAnswer: string;
   explanation: string;
   difficulty: "beginner" | "intermediate" | "advanced";
@@ -92,6 +91,7 @@ Generate a short practice set as JSON ONLY (no markdown fences):
 Rules:
 - 3–5 questions mixed types when the topic allows coding; otherwise MCQ + short answer.
 - Match the given difficulty and milestone topic.
+- If weakTopics are provided, emphasize those areas.
 - Explanations must teach, not only reveal the answer.
 - No external URLs required.`;
 
@@ -150,10 +150,11 @@ export async function knowledgeAnalystAndRoadmap(params: {
   };
 }
 
-/** Resource Scout: search free resources for one milestone topic. */
+/** Resource Scout: dual search (docs + free tutorials), rank, price-label. */
 export async function resourceScout(
   topic: string,
-  goalContext: string
+  goalContext: string,
+  opts?: { budget?: string | null }
 ): Promise<{ resources: DiscoveredResource[]; error?: string }> {
   const firecrawl = getFirecrawl();
   if (!firecrawl) {
@@ -163,13 +164,50 @@ export async function resourceScout(
     };
   }
 
-  const query = `${topic} ${goalContext} free tutorial documentation learn official`;
-  const search = await firecrawl.search(query, 8);
-  if (!search.success) {
-    return { resources: [], error: search.error || "Search failed" };
+  const queries = [
+    `${topic} official documentation tutorial`,
+    `${topic} ${goalContext} free course learn freecodecamp`,
+  ];
+
+  const merged: SearchHit[] = [];
+  const errors: string[] = [];
+
+  for (const q of queries) {
+    const search = await firecrawl.search(q, 6);
+    if (search.success) {
+      merged.push(...(search.results as SearchHit[]));
+    } else if (search.error) {
+      errors.push(search.error);
+    }
   }
 
-  const ranked = filterAndRankSearchResults(search.results as SearchHit[], topic, 5);
+  if (!merged.length) {
+    return {
+      resources: [],
+      error: errors[0] || "Search returned no results",
+    };
+  }
+
+  let ranked = filterAndRankSearchResults(merged, topic, 8);
+
+  // Budget-aware ordering: free-ish first when free_only / free_preferred
+  const budget = opts?.budget || "free_preferred";
+  if (budget === "free_only" || budget === "free_preferred") {
+    ranked = [...ranked].sort((a, b) => {
+      const pa = guessPricingType(a.url, a.title, a.description).type;
+      const pb = guessPricingType(b.url, b.title, b.description).type;
+      return pricingRank(pa) - pricingRank(pb);
+    });
+    if (budget === "free_only") {
+      ranked = ranked.filter((r) => {
+        const t = guessPricingType(r.url, r.title, r.description).type;
+        return t !== "paid";
+      });
+    }
+  }
+
+  ranked = ranked.slice(0, 5);
+
   const resources: DiscoveredResource[] = ranked.map((r) => {
     let provider: string | null = null;
     try {
@@ -193,13 +231,33 @@ export async function resourceScout(
   return { resources };
 }
 
+function pricingRank(t: string): number {
+  switch (t) {
+    case "completely_free":
+      return 0;
+    case "free_audit":
+    case "free_with_conditions":
+    case "free_with_paid_certificate":
+      return 1;
+    case "freemium":
+      return 2;
+    case "unknown":
+      return 3;
+    case "paid":
+      return 4;
+    default:
+      return 3;
+  }
+}
+
 export async function generatePracticeSet(params: {
   topic: string;
   description?: string | null;
   difficulty?: string | null;
+  weakTopics?: string[];
   preferred?: "groq" | "gemini";
 }): Promise<PracticeQuestion[]> {
-  const { topic, description, difficulty, preferred } = params;
+  const { topic, description, difficulty, weakTopics, preferred } = params;
   const messages: AIMessage[] = [
     { role: "system", content: PRACTICE_SYSTEM },
     {
@@ -208,6 +266,7 @@ export async function generatePracticeSet(params: {
         `Topic: ${topic}`,
         description ? `Context: ${description}` : "",
         `Difficulty: ${difficulty || "beginner"}`,
+        weakTopics?.length ? `Weak topics to emphasize: ${weakTopics.join(", ")}` : "",
       ]
         .filter(Boolean)
         .join("\n"),
@@ -246,7 +305,6 @@ export async function generatePracticeSet(params: {
   });
 }
 
-/** Known hosts that are generally free educational content — never over-claim. */
 export function guessPricingType(
   url: string,
   title?: string | null,
@@ -261,15 +319,23 @@ export function guessPricingType(
   })();
   const blob = `${title ?? ""} ${description ?? ""}`.toLowerCase();
 
-  const freeHosts =
-    /^(developer\.mozilla\.org|mdn\.|docs\.python\.org|react\.dev|nodejs\.org|typescriptlang\.org|freecodecamp\.org|khanacademy\.org|ocw\.mit\.edu|cs50\.harvard\.edu|web\.mit\.edu|github\.com|gitlab\.com|wikipedia\.org|w3schools\.com|devdocs\.io|learn\.microsoft\.com|cloud\.google\.com\/.*\/docs)/i;
-
   if (
-    freeHosts.test(host) ||
+    host.includes("developer.mozilla.org") ||
+    host.includes("mdn.") ||
+    host.includes("docs.python.org") ||
+    host === "react.dev" ||
+    host.includes("nodejs.org") ||
+    host.includes("typescriptlang.org") ||
+    host.includes("freecodecamp.org") ||
+    host.includes("khanacademy.org") ||
+    host.includes("ocw.mit.edu") ||
+    host.includes("cs50.harvard.edu") ||
+    host.includes("w3schools.com") ||
+    host.includes("devdocs.io") ||
+    host.includes("wikipedia.org") ||
     host.endsWith(".edu") ||
-    host.includes("freecodecamp") ||
-    host.includes("khanacademy") ||
-    host.includes("mozilla.org")
+    host.includes("github.com") ||
+    host.includes("gitlab.com")
   ) {
     return {
       type: "completely_free",
@@ -291,7 +357,11 @@ export function guessPricingType(
     };
   }
 
-  if (host.includes("udemy.com") || host.includes("pluralsight.com")) {
+  if (
+    host.includes("udemy.com") ||
+    host.includes("pluralsight.com") ||
+    host.includes("linkedin.com")
+  ) {
     return {
       type: "paid",
       note: "Typically paid platform — do not assume free access",
