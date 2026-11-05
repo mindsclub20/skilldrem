@@ -51,12 +51,27 @@ npm run build
 | Dashboard + recent AI chats | Done |
 | Discover (budget + free-first paths) | Done |
 | AI Assistant (persistent multi-chat) | Done |
+| **Unified Learning Workspace** (`/workspace`) | Done (core) |
+| Personalized AI roadmap generation (`/api/ai/roadmap`) | Done |
 | Markdown rendering (sanitized) | Done |
 | Search rank/filter for Discover | Done |
 | Geornies + React Flow | Done |
 | Courses / Books / Mentors | Done |
 | Admin CMS | Done |
 | RLS on `ai_sessions` (user-owned) | Done |
+
+### Learning Workspace
+
+Core product experience at `/workspace`:
+
+1. **My Roadmap** — Generate a personalized multi-stage roadmap from a natural-language goal (experience + current knowledge). Mark milestones complete.
+2. **AI Mentor** — Context-aware entry points into the full assistant.
+3. **Learning Resources** — Per-milestone resource hints + links into Discover.
+4. **Progress Tracker** — Completion %, remaining hours (session-local; full Supabase `learner_progress` persistence next).
+
+Roadmap generation uses Groq (primary) / Gemini (fallback) with structured JSON and a free-resource bias.
+
+Tagline: **Learn Smarter. Build Skills. Reach Further.**
 
 ## Supabase notes
 
