@@ -37,6 +37,9 @@ export default async function DashboardPage() {
             SKILLDREM
           </Link>
           <nav className="flex gap-3 sm:gap-4 text-sm text-muted-foreground overflow-x-auto">
+            <Link href="/workspace" className="hover:text-foreground whitespace-nowrap font-medium text-indigo-600 dark:text-indigo-400">
+              Workspace
+            </Link>
             <Link href="/assistant" className="hover:text-foreground whitespace-nowrap">
               Assistant
             </Link>
@@ -45,9 +48,6 @@ export default async function DashboardPage() {
             </Link>
             <Link href="/georny" className="hover:text-foreground whitespace-nowrap">
               Geornies
-            </Link>
-            <Link href="/courses" className="hover:text-foreground whitespace-nowrap">
-              Courses
             </Link>
           </nav>
         </div>
@@ -60,16 +60,22 @@ export default async function DashboardPage() {
 
         <div className="mt-6 flex flex-wrap gap-3">
           <Link
-            href="/assistant"
-            className="rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
+            href="/workspace"
+            className="rounded-full bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500"
           >
-            Open AI assistant
+            Open Learning Workspace
+          </Link>
+          <Link
+            href="/assistant"
+            className="rounded-full border border-border px-4 py-2 text-sm font-medium hover:bg-muted"
+          >
+            AI Mentor
           </Link>
           <Link
             href="/discover"
             className="rounded-full border border-border px-4 py-2 text-sm font-medium hover:bg-muted"
           >
-            Generate a free-first path
+            Discover resources
           </Link>
         </div>
 
@@ -84,12 +90,11 @@ export default async function DashboardPage() {
             <div className="rounded-2xl border border-dashed border-border p-8 sm:p-10 text-center text-muted-foreground">
               <p className="font-medium text-foreground">No active journeys yet</p>
               <p className="mt-2 text-sm max-w-md mx-auto">
-                Discover a free-first learning path, or open a published Georny and start tracking
-                progress.
+                Create a personalized roadmap in the Learning Workspace, or browse published Geornies.
               </p>
               <div className="mt-4 flex flex-wrap justify-center gap-3">
-                <Link href="/discover" className="text-accent font-medium text-sm">
-                  Start discovering →
+                <Link href="/workspace" className="text-indigo-600 font-medium text-sm">
+                  Create my roadmap →
                 </Link>
                 <Link href="/georny" className="text-sm text-muted-foreground hover:text-foreground">
                   View Geornies
