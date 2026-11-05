@@ -89,6 +89,20 @@ export async function POST(request: Request) {
       }
     }
 
+    // Streak / XP for completing or progressing
+    if (status === "completed" || status === "in_progress") {
+      await supabase.from("learning_activity").upsert(
+        {
+          user_id: user.id,
+          activity_date: new Date().toISOString().slice(0, 10),
+          activity_type: status === "completed" ? "milestone_complete" : "study",
+          xp: status === "completed" ? 25 : 10,
+          metadata: { milestoneId, userJourneyId },
+        },
+        { onConflict: "user_id,activity_date,activity_type" }
+      );
+    }
+
     const { data: allMs } = await supabase
       .from("milestones")
       .select("id")
@@ -117,7 +131,36 @@ export async function POST(request: Request) {
       .eq("id", userJourneyId)
       .eq("user_id", user.id);
 
-    return NextResponse.json({ ok: true, progress_percent: percent });
+    let badge = null;
+    if (percent >= 100) {
+      const { data: journey } = await supabase
+        .from("journeys")
+        .select("id, title")
+        .eq("id", uj.journey_id)
+        .maybeSingle();
+
+      const { data: awarded } = await supabase
+        .from("skill_badges")
+        .upsert(
+          {
+            user_id: user.id,
+            badge_key: "path_complete",
+            title: `Completed: ${journey?.title || "Learning path"}`,
+            description: "Finished every milestone on this roadmap.",
+            journey_id: uj.journey_id,
+          },
+          { onConflict: "user_id,badge_key,journey_id" }
+        )
+        .select("id, title, badge_key, awarded_at")
+        .maybeSingle();
+      badge = awarded;
+    }
+
+    return NextResponse.json({
+      ok: true,
+      progress_percent: percent,
+      badge,
+    });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Progress update failed";
     return NextResponse.json({ error: msg }, { status: 500 });
@@ -149,6 +192,7 @@ export async function GET(request: Request) {
         status,
         progress_percent,
         journey_id,
+        hours_per_week,
         journeys (
           id,
           title,
@@ -156,7 +200,9 @@ export async function GET(request: Request) {
           difficulty,
           estimated_hours,
           target_outcome,
-          category
+          category,
+          is_published,
+          created_by
         )
       `
       )
