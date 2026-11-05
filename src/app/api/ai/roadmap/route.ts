@@ -36,7 +36,6 @@ export async function POST(request: Request) {
       );
     }
 
-    // Load preferences as defaults
     const { data: prefs } = await supabase
       .from("user_preferences")
       .select("experience_level, budget_preference, available_hours_per_week")
@@ -60,7 +59,6 @@ export async function POST(request: Request) {
       preferred: body.preferred,
     });
 
-    // Create journey (user-owned, not published to catalog)
     const slugBase = draft.title
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
@@ -92,7 +90,6 @@ export async function POST(request: Request) {
       );
     }
 
-    // Insert milestones
     const milestoneRows = draft.milestones.map((m, i) => ({
       journey_id: journey.id,
       title: m.title,
@@ -119,7 +116,6 @@ export async function POST(request: Request) {
       );
     }
 
-    // Resource Scout for each milestone (sequential to respect rate limits)
     const resourcesByMilestone: Record<
       string,
       {
@@ -136,7 +132,7 @@ export async function POST(request: Request) {
     const scoutErrors: string[] = [];
 
     for (const ms of milestones) {
-      const { resources, error } = await resourceScout(ms.title, goal);
+      const { resources, error } = await resourceScout(ms.title, goal, { budget });
       if (error) scoutErrors.push(`${ms.title}: ${error}`);
       resourcesByMilestone[ms.id] = [];
 
@@ -176,7 +172,6 @@ export async function POST(request: Request) {
       }
     }
 
-    // Enroll user
     const { data: userJourney, error: ujErr } = await supabase
       .from("user_journeys")
       .insert({
@@ -195,7 +190,6 @@ export async function POST(request: Request) {
       );
     }
 
-    // Seed learner_progress rows
     const progressRows = milestones.map((ms) => ({
       user_id: user.id,
       milestone_id: ms.id,
@@ -204,7 +198,6 @@ export async function POST(request: Request) {
     }));
     await supabase.from("learner_progress").insert(progressRows);
 
-    // Optional learning goal record
     await supabase.from("learning_goals").insert({
       user_id: user.id,
       title: goal.slice(0, 200),
@@ -230,7 +223,6 @@ export async function POST(request: Request) {
   }
 }
 
-/** List the current user's active roadmaps with milestones. */
 export async function GET() {
   try {
     const supabase = await createClient();
