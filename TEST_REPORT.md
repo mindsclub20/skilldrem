@@ -1,31 +1,20 @@
 # TEST_REPORT.md — Skilldrem
 
-**Date:** 2026-11-08
-**Scope:** Forensic + static verification (no live AI keys exercised in this session)
+**Date:** 2026-11-08 (Master Execution 2)
 
-## Passed (code / live inspection)
-- Homepage loads and renders marketing content
-- Discover page loads with budget preference UI
-- Protected routes redirect unauthenticated users to login (assistant, dashboard, workspace observed redirect behavior)
-- AI provider abstraction and fallback logic present
-- Firecrawl client implements HTTPS-only + private IP rejection
-- Roadmap API validates goal length, requires auth, requests structured JSON
-- Discover API degrades gracefully when Firecrawl key absent
-- Existing unit tests: `resource-filter.test.ts`, `url-safety.test.ts` (present in repo)
-
-## Failed / Blocked
-- Live Groq / Gemini / Firecrawl API calls — **blocked** (keys not available in this environment; cannot confirm runtime success)
-- Supabase schema / RLS live inspection — **blocked** (connector permission denied)
-- Full end-to-end authenticated roadmap generation + save + progress persistence — **not tested** here
-- Automated test suite execution — **not run** in this session
-
-## Not Tested
-- Registration / login success path with real credentials
-- Session persistence across devices
-- Admin CMS mutations
-- Mobile responsiveness beyond initial viewport
-- Bundle size / Lighthouse performance
-- Dependency vulnerability scan
-
-## Notes
-Any claim of "AI working in production" must be re-validated with current Vercel environment variables.
+| Test | Expected | Actual | Status | Evidence |
+|------|----------|--------|--------|----------|
+| Homepage load | Marketing content | Renders | Verified | Browser |
+| Discover load | Budget UI | Renders | Verified | Browser |
+| /workspace unauthenticated | Redirect login | Redirect | Verified | Browser |
+| Middleware source includes workspace/georny | Protected | Present | Verified | middleware.ts |
+| Progress API route exists | On main | Committed | Verified | GitHub |
+| List journeys API exists | On main | Committed | Verified | GitHub |
+| Migration SQL present | In repo | Committed | Verified | GitHub |
+| Migration applied on prod | Table exists | Not applied | Blocked | Needs authorization |
+| Live Groq call | Success | Not run | Blocked | No key |
+| Live Gemini call | Success | Not run | Blocked | No key |
+| Live Firecrawl | Success or degrade | Not run | Blocked | No key |
+| Auth signup/login E2E | Session | Not run | Not tested | No test credentials |
+| Progress restore after login | State restored | Not run | Blocked | Migration + auth |
+| Unit tests resource-filter/url-safety | Pass | Present in repo | Not re-run | — |
