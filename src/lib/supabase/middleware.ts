@@ -37,11 +37,14 @@ export async function updateSession(request: NextRequest) {
 
   const path = request.nextUrl.pathname;
   const isAuthPage = path.startsWith("/auth");
+  // Keep user-specific learning surfaces behind auth
   const isProtected =
     path.startsWith("/dashboard") ||
     path.startsWith("/onboarding") ||
     path.startsWith("/admin") ||
-    path.startsWith("/assistant");
+    path.startsWith("/assistant") ||
+    path.startsWith("/workspace") ||
+    path.startsWith("/georny");
 
   if (!user && isProtected) {
     const url = request.nextUrl.clone();
