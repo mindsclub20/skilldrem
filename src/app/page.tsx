@@ -7,6 +7,7 @@ import {
   GraduationCap,
   ArrowRight,
   Sparkles,
+  Zap,
 } from "lucide-react";
 
 export default function HomePage() {
@@ -19,7 +20,8 @@ export default function HomePage() {
             SKILLDREM
           </Link>
           <nav className="hidden md:flex items-center gap-6 text-sm text-muted-foreground">
-            <Link href="/sprint" className="hover:text-foreground transition-colors">Learning Sprint</Link>\n            <Link href="/discover" className="hover:text-foreground transition-colors">Discover</Link>
+            <Link href="/sprint" className="hover:text-foreground transition-colors">Learning Sprint</Link>
+            <Link href="/discover" className="hover:text-foreground transition-colors">Discover</Link>
             <Link href="/courses" className="hover:text-foreground transition-colors">Courses</Link>
             <Link href="/books" className="hover:text-foreground transition-colors">Books</Link>
             <Link href="/mentors" className="hover:text-foreground transition-colors">AI Mentors</Link>
@@ -48,7 +50,13 @@ export default function HomePage() {
             <p className="mt-6 text-lg text-muted-foreground max-w-xl mx-auto">
               Discover free courses, open ebooks, AI mentors, and personalized learning journeys — all in one place.
             </p>
-            <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">\n              <Link href="/sprint" className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-primary px-6 font-semibold text-primary-foreground shadow-lg shadow-primary/15 transition hover:opacity-90">\n                <Zap className="h-4 w-4" /> Build my 7-day learning sprint <ArrowRight className="h-4 w-4" />\n              </Link>\n              <Link href="/discover" className="inline-flex h-12 items-center justify-center rounded-xl border border-border bg-card px-6 text-sm font-medium transition hover:border-accent/40">Explore learning paths</Link>\n            </div>\n            <form action="/discover" className="mt-5 flex flex-col sm:flex-row gap-3 max-w-xl mx-auto">
+            <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+              <Link href="/sprint" className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-primary px-6 font-semibold text-primary-foreground shadow-lg shadow-primary/15 transition hover:opacity-90">
+                <Zap className="h-4 w-4" /> Build my 7-day learning sprint <ArrowRight className="h-4 w-4" />
+              </Link>
+              <Link href="/discover" className="inline-flex h-12 items-center justify-center rounded-xl border border-border bg-card px-6 text-sm font-medium transition hover:border-accent/40">Explore learning paths</Link>
+            </div>
+            <form action="/discover" className="mt-5 flex flex-col sm:flex-row gap-3 max-w-xl mx-auto">
               <div className="relative flex-1">
                 <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <input name="q" type="search" placeholder="What do you want to learn?" className="w-full h-12 rounded-xl border border-border bg-card pl-11 pr-4 text-base shadow-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring" aria-label="Search learning goals" />
@@ -63,6 +71,7 @@ export default function HomePage() {
         <section className="px-4 pb-20">
           <div className="mx-auto max-w-6xl grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {[
+              { icon: Zap, title: "Learning Sprint", desc: "Turn a goal into a realistic 7- or 14-day plan with daily missions and progress check-ins.", href: "/sprint" },
               { icon: GraduationCap, title: "Free & paid courses", desc: "Accurately classified free, free-with-conditions, audit, and paid options.", href: "/courses" },
               { icon: BookOpen, title: "Open ebooks", desc: "Public domain, open-access, and legitimate textbook sources only.", href: "/books" },
               { icon: Bot, title: "AI mentors", desc: "Compare tools for explanations, coding, math, and study planning.", href: "/mentors" },
