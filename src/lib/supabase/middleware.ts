@@ -37,14 +37,16 @@ export async function updateSession(request: NextRequest) {
 
   const path = request.nextUrl.pathname;
   const isAuthPage = path.startsWith("/auth");
-  // Keep user-specific learning surfaces behind auth
+  // Keep user-specific learning surfaces behind auth.
+  // /georny (list) is public so learners can browse published roadmaps without signing in.
+  // Individual /georny/[id] graphs remain protected if they surface private progress.
   const isProtected =
     path.startsWith("/dashboard") ||
     path.startsWith("/onboarding") ||
     path.startsWith("/admin") ||
     path.startsWith("/assistant") ||
     path.startsWith("/workspace") ||
-    path.startsWith("/georny");
+    (path.startsWith("/georny/") && path !== "/georny");
 
   if (!user && isProtected) {
     const url = request.nextUrl.clone();
