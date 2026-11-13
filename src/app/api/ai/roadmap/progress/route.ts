@@ -120,13 +120,19 @@ export async function POST(request: Request) {
 
     let body: ProgressUpdateInput & { journey_id?: string };
     try {
-      body = (await request.json()) as ProgressUpdateInput & { journey_id?: string };
+      const parsed: unknown = await request.json();
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+        return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+      }
+      body = parsed as ProgressUpdateInput & { journey_id?: string };
     } catch {
       return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
     }
 
-    const journeyId = body.journey_id?.trim();
-    if (!journeyId) return NextResponse.json({ error: "journey_id required" }, { status: 400 });
+    if (typeof body.journey_id !== "string" || !body.journey_id.trim()) {
+      return NextResponse.json({ error: "journey_id required" }, { status: 400 });
+    }
+    const journeyId = body.journey_id.trim();
 
     const { data: enrollment, error: enrollmentErr } = await supabase
       .from("user_journeys")
