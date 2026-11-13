@@ -1,39 +1,12 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
+import { restoreRoadmapFromProgress, type ProgressPayload, type Roadmap } from "@/lib/roadmap-progress";
 import Link from "next/link";
-
-type Milestone = {
-  title: string;
-  description: string;
-  estimated_hours: number;
-  node_type: string;
-  practice?: string;
-  topics?: string[];
-  resources_hint?: string[];
-  completed?: boolean;
-};
-
-type Stage = {
-  name: string;
-  milestones: Milestone[];
-};
-
-type Roadmap = {
-  title: string;
-  description: string;
-  target_outcome: string;
-  difficulty: string;
-  estimated_hours: number;
-  category: string;
-  stages: Stage[];
-  career_paths?: string[];
-  next_steps_after?: string;
-};
 
 type Tab = "mentor" | "roadmap" | "resources" | "progress";
 
-export default function WorkspaceClient() {
+export default function WorkspaceClient({ initialJourneyId }: { initialJourneyId?: string | null }) {
   const [tab, setTab] = useState<Tab>("roadmap");
   const [goal, setGoal] = useState("");
   const [experience, setExperience] = useState("beginner");
@@ -43,6 +16,12 @@ export default function WorkspaceClient() {
   const [roadmap, setRoadmap] = useState<Roadmap | null>(null);
   const [provider, setProvider] = useState<string | null>(null);
   const [completed, setCompleted] = useState<Record<string, boolean>>({});
+  const [milestoneIds, setMilestoneIds] = useState<Record<string, string>>({});
+  const [progressLoading, setProgressLoading] = useState(false);
+  const [progressSyncAvailable, setProgressSyncAvailable] = useState(false);
+  const [progressSaving, setProgressSaving] = useState<Record<string, boolean>>({});
+  const [progressError, setProgressError] = useState<string | null>(null);
+  const [progressNotice, setProgressNotice] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [savedId, setSavedId] = useState<string | null>(null);
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
@@ -52,6 +31,45 @@ export default function WorkspaceClient() {
     : 0;
   const doneCount = Object.values(completed).filter(Boolean).length;
   const progressPct = totalMilestones ? Math.round((doneCount / totalMilestones) * 100) : 0;
+  const retryJourneyId = savedId || initialJourneyId || null;
+
+  const restoreJourney = useCallback(async (journeyId: string) => {
+    setProgressLoading(true);
+    setProgressError(null);
+    try {
+      const response = await fetch(`/api/ai/roadmap/progress?journey_id=${encodeURIComponent(journeyId)}`, {
+        cache: "no-store",
+      });
+      const data = await response.json();
+      if (!response.ok && data.code !== "MIGRATION_REQUIRED") {
+        throw new Error(data.error || "Could not load this saved roadmap.");
+      }
+      const restored = restoreRoadmapFromProgress(data as ProgressPayload);
+      if (!restored) throw new Error(data.error || "This saved roadmap has no milestones.");
+
+      setRoadmap(restored.roadmap);
+      setCompleted(restored.completedByKey);
+      setMilestoneIds(restored.milestoneIdsByKey);
+      setSavedId(journeyId);
+      setProgressSyncAvailable(response.ok);
+      setSaveMsg("Saved roadmap loaded.");
+      setTab("roadmap");
+      if (response.ok) {
+        setProgressNotice("Progress is synced to your account.");
+      } else {
+        setProgressNotice("Roadmap loaded, but progress sync is unavailable.");
+        setProgressError(data.error || "Progress storage is unavailable.");
+      }
+    } catch (e) {
+      setProgressError(e instanceof Error ? e.message : "Could not load saved progress.");
+    } finally {
+      setProgressLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (initialJourneyId) void restoreJourney(initialJourneyId);
+  }, [initialJourneyId, restoreJourney]);
 
   const generate = useCallback(async () => {
     if (!goal.trim() || goal.trim().length < 5) {
@@ -61,6 +79,11 @@ export default function WorkspaceClient() {
     setLoading(true);
     setError(null);
     setSavedId(null);
+    setMilestoneIds({});
+    setCompleted({});
+    setProgressSyncAvailable(false);
+    setProgressError(null);
+    setProgressNotice(null);
     setSaveMsg(null);
     try {
       const res = await fetch("/api/ai/roadmap", {
@@ -89,6 +112,7 @@ export default function WorkspaceClient() {
     if (!roadmap) return;
     setSaving(true);
     setSaveMsg(null);
+    setProgressError(null);
     try {
       const res = await fetch("/api/ai/roadmap/save", {
         method: "POST",
@@ -97,8 +121,41 @@ export default function WorkspaceClient() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Save failed");
+      if (typeof data.journey_id !== "string" || !data.journey_id) {
+        throw new Error("The save response did not include a journey ID.");
+      }
+
       setSavedId(data.journey_id);
       setSaveMsg(`Saved! ${data.milestone_count} milestones stored.`);
+
+      try {
+        const progressRes = await fetch(
+          `/api/ai/roadmap/progress?journey_id=${encodeURIComponent(data.journey_id)}`,
+          { cache: "no-store" }
+        );
+        const progressData = await progressRes.json();
+        if (!progressRes.ok && progressData.code !== "MIGRATION_REQUIRED") {
+          throw new Error(progressData.error || "Progress could not be initialized.");
+        }
+        const restored = restoreRoadmapFromProgress(progressData as ProgressPayload);
+        if (!restored) throw new Error(progressData.error || "Saved milestones could not be loaded.");
+
+        setRoadmap(restored.roadmap);
+        setCompleted(restored.completedByKey);
+        setMilestoneIds(restored.milestoneIdsByKey);
+        setProgressSyncAvailable(progressRes.ok);
+        if (progressRes.ok) {
+          setProgressNotice("Progress is synced to your account.");
+        } else {
+          setProgressNotice("Roadmap saved, but progress sync is unavailable.");
+          setProgressError(progressData.error || "Progress storage is unavailable.");
+        }
+      } catch (syncError) {
+        setProgressSyncAvailable(false);
+        setProgressError(
+          `Roadmap saved, but progress sync could not be initialized: ${syncError instanceof Error ? syncError.message : "Unknown error"}`
+        );
+      }
     } catch (e) {
       setSaveMsg(e instanceof Error ? e.message : "Could not save");
     } finally {
@@ -106,8 +163,43 @@ export default function WorkspaceClient() {
     }
   }, [roadmap]);
 
-  const toggleComplete = (key: string) => {
-    setCompleted((prev) => ({ ...prev, [key]: !prev[key] }));
+  const toggleComplete = async (key: string) => {
+    const nextCompleted = !completed[key];
+    const milestoneId = milestoneIds[key];
+    setCompleted((prev) => ({ ...prev, [key]: nextCompleted }));
+
+    if (!savedId || !milestoneId) {
+      setProgressNotice("Save this roadmap to sync progress across sessions.");
+      return;
+    }
+    if (!progressSyncAvailable) {
+      setProgressNotice("This roadmap is saved, but progress sync is unavailable. This change is local only.");
+      return;
+    }
+
+    setProgressSaving((current) => ({ ...current, [key]: true }));
+    setProgressError(null);
+    setProgressNotice("Saving progress…");
+    try {
+      const response = await fetch("/api/ai/roadmap/progress", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          journey_id: savedId,
+          milestone_id: milestoneId,
+          completed: nextCompleted,
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Progress could not be saved.");
+      setProgressNotice(data.warning || "Progress saved to your account.");
+    } catch (e) {
+      setCompleted((prev) => ({ ...prev, [key]: !nextCompleted }));
+      setProgressNotice(null);
+      setProgressError(e instanceof Error ? e.message : "Progress could not be saved.");
+    } finally {
+      setProgressSaving((current) => ({ ...current, [key]: false }));
+    }
   };
 
   return (
@@ -149,6 +241,26 @@ export default function WorkspaceClient() {
       </header>
 
       <main className="mx-auto max-w-6xl px-4 py-8">
+        {progressLoading && (
+          <p role="status" aria-live="polite" className="mb-4 text-sm text-muted-foreground">
+            Loading saved roadmap and progress…
+          </p>
+        )}
+        {progressNotice && (
+          <p role="status" aria-live="polite" className="mb-4 text-sm text-muted-foreground">
+            {progressNotice}
+          </p>
+        )}
+        {progressError && (
+          <div role="alert" className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-300/60 bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-950/30 dark:text-red-300">
+            <p>{progressError}</p>
+            {retryJourneyId && (
+              <button type="button" onClick={() => void restoreJourney(retryJourneyId)} className="rounded-lg border border-current/30 px-3 py-1.5 font-medium">
+                Retry
+              </button>
+            )}
+          </div>
+        )}
         {(!roadmap || tab === "roadmap") && (
           <section className="mb-8 rounded-2xl border border-border bg-card p-6 shadow-sm">
             <h1 className="text-xl font-bold tracking-tight">
@@ -250,7 +362,9 @@ export default function WorkspaceClient() {
                       >
                         <div className="flex gap-4">
                           <button
-                            onClick={() => toggleComplete(key)}
+                            onClick={() => void toggleComplete(key)}
+                            disabled={!!progressSaving[key]}
+                            aria-busy={!!progressSaving[key]}
                             className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
                               isDone
                                 ? "border-emerald-500 bg-emerald-500 text-white"
@@ -468,7 +582,7 @@ export default function WorkspaceClient() {
                     </div>
                   </dl>
                   <p className="mt-4 text-xs text-muted-foreground">
-                    Progress is stored locally in this session. Full persistence to Supabase learner_progress is next.
+                    {savedId && progressSyncAvailable ? "Progress is saved to your account and will be restored when you reopen this journey." : "Save this roadmap to your account to sync progress across sessions."}
                   </p>
                 </>
               ) : (
