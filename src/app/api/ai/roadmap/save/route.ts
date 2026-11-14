@@ -128,7 +128,20 @@ export async function POST(request: Request) {
     });
 
     if (ujErr) {
-      console.warn("[roadmap/save] user_journeys", ujErr);
+      console.error("[roadmap/save] user_journeys", ujErr);
+      const { error: rollbackErr } = await supabase
+        .from("journeys")
+        .delete()
+        .eq("id", journey.id);
+
+      if (rollbackErr) {
+        console.error("[roadmap/save] cleanup after enrollment failure", rollbackErr);
+      }
+
+      return NextResponse.json(
+        { error: "Failed to enroll saved roadmap. Please retry." },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({
