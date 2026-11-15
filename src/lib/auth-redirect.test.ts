@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { readFile } from "node:fs/promises";
 import { safeAuthRedirect, safeAuthRedirectUrl } from "./auth-redirect";
 
 describe("safeAuthRedirect", () => {
@@ -43,5 +44,17 @@ describe("safeAuthRedirect", () => {
     expect(target.pathname).toBe("/");
     expect(target.search).toBe("");
     expect(target.hash).toBe("");
+  });
+});
+
+describe("protected route login return path", () => {
+  it("preserves the protected route query string when sending a learner to login", async () => {
+    const middleware = await readFile(
+      new URL("./supabase/middleware.ts", import.meta.url),
+      "utf8"
+    );
+    expect(middleware).toMatch(
+      /searchParams\\.set\\("redirect",\\s*`\\$\\{path\\}\\$\\{request\\.nextUrl\\.search\\}`\\)/
+    );
   });
 });
