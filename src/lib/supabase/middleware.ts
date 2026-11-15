@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { safeAuthRedirectUrl } from "@/lib/auth-redirect";
 
 type CookieToSet = {
   name: string;
@@ -36,8 +37,8 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const path = request.nextUrl.pathname;
-  const isAuthPage = path.startsWith("/auth");
-  // Keep user-specific learning surfaces behind auth
+  const isLogoutRoute = path === "/auth/logout";
+  const isAuthPage = path.startsWith("/auth") && !isLogoutRoute;
   const isProtected =
     path.startsWith("/dashboard") ||
     path.startsWith("/onboarding") ||
@@ -49,15 +50,18 @@ export async function updateSession(request: NextRequest) {
   if (!user && isProtected) {
     const url = request.nextUrl.clone();
     url.pathname = "/auth/login";
-    url.searchParams.set("redirect", path);
+    url.searchParams.set("redirect", `${path}${request.nextUrl.search}`);
     return NextResponse.redirect(url);
   }
 
-  // After login, send users to the AI chat (not dashboard)
+  // Keep the public homepage as the default destination after authentication.
+  // Build the destination as a URL so its query and fragment remain intact.
   if (user && isAuthPage && path !== "/auth/callback") {
-    const url = request.nextUrl.clone();
-    url.pathname = "/assistant";
-    return NextResponse.redirect(url);
+    const destination = safeAuthRedirectUrl(
+      request.nextUrl.searchParams.get("redirect"),
+      request.nextUrl.origin
+    );
+    return NextResponse.redirect(destination);
   }
 
   return supabaseResponse;

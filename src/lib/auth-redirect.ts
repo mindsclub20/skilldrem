@@ -1,4 +1,4 @@
-const FALLBACK_REDIRECT = "/assistant";
+const FALLBACK_REDIRECT = "/";
 
 export function safeAuthRedirect(value: string | null | undefined): string {
   if (
@@ -19,4 +19,16 @@ export function safeAuthRedirect(value: string | null | undefined): string {
   } catch {
     return FALLBACK_REDIRECT;
   }
+}
+
+/**
+ * Build an absolute same-origin redirect URL without assigning a path that
+ * contains query or fragment delimiters to URL.pathname.
+ */
+export function safeAuthRedirectUrl(
+  value: string | null | undefined,
+  origin: string
+): URL {
+  const base = new URL(origin);
+  return new URL(safeAuthRedirect(value), base.origin);
 }
