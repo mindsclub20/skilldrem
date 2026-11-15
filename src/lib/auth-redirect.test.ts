@@ -53,8 +53,6 @@ describe("protected route login return path", () => {
       new URL("./supabase/middleware.ts", import.meta.url),
       "utf8"
     );
-    expect(middleware).toMatch(
-      /searchParams\\.set\\("redirect",\\s*`\\$\\{path\\}\\$\\{request\\.nextUrl\\.search\\}`\\)/
-    );
+    expect(middleware).toContain('url.searchParams.set("redirect", `${path}${request.nextUrl.search}`);');
   });
 });
