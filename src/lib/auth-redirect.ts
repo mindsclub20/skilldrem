@@ -1,4 +1,4 @@
-export const PUBLIC_AUTH_REDIRECT = "/";
+const FALLBACK_REDIRECT = "/";
 
 export function safeAuthRedirect(value: string | null | undefined): string {
   if (
@@ -8,15 +8,27 @@ export function safeAuthRedirect(value: string | null | undefined): string {
     value.includes("\\") ||
     /[\u0000-\u001f\u007f]/.test(value)
   ) {
-    return PUBLIC_AUTH_REDIRECT;
+    return FALLBACK_REDIRECT;
   }
 
   try {
     const base = "https://skilldrem.invalid";
     const parsed = new URL(value, base);
-    if (parsed.origin !== base) return PUBLIC_AUTH_REDIRECT;
+    if (parsed.origin !== base) return FALLBACK_REDIRECT;
     return `${parsed.pathname}${parsed.search}${parsed.hash}`;
   } catch {
-    return PUBLIC_AUTH_REDIRECT;
+    return FALLBACK_REDIRECT;
   }
+}
+
+/**
+ * Build an absolute same-origin redirect URL without assigning a path that
+ * contains query or fragment delimiters to URL.pathname.
+ */
+export function safeAuthRedirectUrl(
+  value: string | null | undefined,
+  origin: string
+): URL {
+  const base = new URL(origin);
+  return new URL(safeAuthRedirect(value), base.origin);
 }

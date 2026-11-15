@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { safeAuthRedirect } from "./auth-redirect";
+import { safeAuthRedirect, safeAuthRedirectUrl } from "./auth-redirect";
 
 describe("safeAuthRedirect", () => {
   it("keeps safe same-origin application paths", () => {
@@ -22,5 +22,26 @@ describe("safeAuthRedirect", () => {
   it("rejects backslash and control-character redirects", () => {
     expect(safeAuthRedirect("/\\\\evil.example")).toBe("/");
     expect(safeAuthRedirect("/path\\nheader")).toBe("/");
+  });
+
+  it("preserves path, query, and fragment in an absolute same-origin redirect URL", () => {
+    const target = safeAuthRedirectUrl(
+      "/discover?topic=robotics#results",
+      "https://skilldrem.example/auth/login?redirect=ignored"
+    );
+
+    expect(target.origin).toBe("https://skilldrem.example");
+    expect(target.pathname).toBe("/discover");
+    expect(target.search).toBe("?topic=robotics");
+    expect(target.hash).toBe("#results");
+  });
+
+  it("keeps unsafe redirect URLs on the same-origin homepage", () => {
+    const target = safeAuthRedirectUrl("//evil.example/path", "https://skilldrem.example");
+
+    expect(target.origin).toBe("https://skilldrem.example");
+    expect(target.pathname).toBe("/");
+    expect(target.search).toBe("");
+    expect(target.hash).toBe("");
   });
 });

@@ -1,6 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-import { safeAuthRedirect } from "@/lib/auth-redirect";
+import { safeAuthRedirectUrl } from "@/lib/auth-redirect";
 
 type CookieToSet = {
   name: string;
@@ -55,13 +55,13 @@ export async function updateSession(request: NextRequest) {
   }
 
   // Keep the public homepage as the default destination after authentication.
-  // Explicit safe redirect destinations are handled by the login/callback flow.
+  // Build the destination as a URL so its query and fragment remain intact.
   if (user && isAuthPage && path !== "/auth/callback") {
-    const url = request.nextUrl.clone();
-    url.pathname = safeAuthRedirect(url.searchParams.get("redirect"));
-    url.search = "";
-    url.hash = "";
-    return NextResponse.redirect(url);
+    const destination = safeAuthRedirectUrl(
+      request.nextUrl.searchParams.get("redirect"),
+      request.nextUrl.origin
+    );
+    return NextResponse.redirect(destination);
   }
 
   return supabaseResponse;
