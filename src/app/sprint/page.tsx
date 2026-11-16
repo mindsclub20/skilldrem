@@ -15,6 +15,7 @@ import {
   Zap,
 } from "lucide-react";
 import { MarkdownMessage } from "@/components/ai/MarkdownMessage";
+import { EXAMPLE_GOALS } from "@/lib/example-goals";
 import {
   buildSprintGoal,
   type SprintDays,
@@ -152,9 +153,21 @@ export default function SprintPage() {
                   onChange={(event) => setGoal(event.target.value)}
                   maxLength={200}
                   required
-                  placeholder="e.g. Build my first Arduino robot"
+                  placeholder="e.g. Class 12 Physics board exam revision"
                   className="h-12 w-full rounded-xl border border-border bg-background px-4 text-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20"
                 />
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {EXAMPLE_GOALS.map((example) => (
+                    <button
+                      key={example.label}
+                      type="button"
+                      onClick={() => setGoal(example.value)}
+                      className="rounded-full border border-border bg-background px-2.5 py-1 text-[11px] text-muted-foreground transition hover:border-accent/50 hover:text-foreground"
+                    >
+                      {example.label}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <fieldset>
