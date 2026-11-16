@@ -37,14 +37,16 @@ export async function updateSession(request: NextRequest) {
 
   const path = request.nextUrl.pathname;
   const isAuthPage = path.startsWith("/auth");
-  // Keep user-specific learning surfaces behind auth
+  // Keep user-specific learning surfaces behind auth.
+  // /georny (list) is public so learners can browse published roadmaps without signing in.
+  // Individual /georny/[id] remains protected when it may surface private progress.
   const isProtected =
     path.startsWith("/dashboard") ||
     path.startsWith("/onboarding") ||
     path.startsWith("/admin") ||
     path.startsWith("/assistant") ||
     path.startsWith("/workspace") ||
-    path.startsWith("/georny");
+    (path.startsWith("/georny/") && path !== "/georny");
 
   if (!user && isProtected) {
     const url = request.nextUrl.clone();
@@ -54,7 +56,8 @@ export async function updateSession(request: NextRequest) {
   }
 
   // After login, send users to the AI chat (not dashboard)
-  if (user && isAuthPage && path !== "/auth/callback") {
+  // Note: PR #7 may further refine default redirect and logout exclusion.
+  if (user && isAuthPage && path !== "/auth/callback" && path !== "/auth/logout") {
     const url = request.nextUrl.clone();
     url.pathname = "/assistant";
     return NextResponse.redirect(url);
