@@ -103,7 +103,7 @@ export default async function DashboardPage() {
             </div>
           ) : (
             <ul className="grid gap-4 sm:grid-cols-2">
-              {(journeys as { id: string; progress_percent?: number; journeys?: { title?: string } }[]).map(
+              {(journeys as { id: string; progress_percent?: number; journeys?: { id?: string; title?: string } }[]).map(
                 (uj) => (
                   <li key={uj.id} className="rounded-xl border border-border bg-card p-5">
                     <h3 className="font-medium">{uj.journeys?.title ?? "Journey"}</h3>
@@ -118,6 +118,14 @@ export default async function DashboardPage() {
                         }}
                       />
                     </div>
+                    {uj.journeys?.id && (
+                      <Link
+                        href={`/workspace?journey_id=${encodeURIComponent(uj.journeys.id)}`}
+                        className="mt-3 inline-flex text-sm font-medium text-indigo-600 hover:underline dark:text-indigo-400"
+                      >
+                        Resume roadmap →
+                      </Link>
+                    )}
                   </li>
                 )
               )}
