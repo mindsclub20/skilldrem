@@ -7,3 +7,14 @@ export function onboardingSaveError(stage: OnboardingSaveStage): string {
 
   return "Your preferences were saved, but your profile could not be marked complete. Please try again.";
 }
+
+export function onboardingProfileSaveError(
+  profile: { id: string } | null,
+  error: unknown,
+): string | null {
+  if (error || !profile?.id) {
+    return onboardingSaveError("profile");
+  }
+
+  return null;
+}
