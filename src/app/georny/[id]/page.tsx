@@ -12,7 +12,7 @@ export default async function GeornyDetailPage({
   const supabase = await createClient();
 
   const isUuid = /^[0-9a-f-]{36}$/i.test(id);
-  let q = supabase.from("journeys").select("*").eq("is_published", true);
+  const q = supabase.from("journeys").select("*").eq("is_published", true);
   const { data: journey } = isUuid
     ? await q.eq("id", id).maybeSingle()
     : await q.eq("slug", id).maybeSingle();
