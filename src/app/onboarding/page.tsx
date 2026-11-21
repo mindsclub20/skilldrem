@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { onboardingSaveError } from "@/lib/onboarding";
+import { onboardingProfileSaveError, onboardingSaveError } from "@/lib/onboarding";
 
 const INTERESTS = ["Programming", "Data Science", "Design", "Business", "Languages", "Math", "Science", "AI/ML", "Web Dev", "Mobile"];
 const LEVELS = ["beginner", "intermediate", "advanced", "expert"] as const;
@@ -61,13 +61,18 @@ export default function OnboardingPage() {
         throw new Error(onboardingSaveError("preferences"));
       }
 
-      const { error: profileError } = await supabase
+      const { data: profile, error: profileError } = await supabase
         .from("profiles")
-        .update({ onboarding_completed: true })
-        .eq("id", user.id);
+        .upsert(
+          { id: user.id, onboarding_completed: true },
+          { onConflict: "id" },
+        )
+        .select("id")
+        .maybeSingle();
 
-      if (profileError) {
-        throw new Error(onboardingSaveError("profile"));
+      const profileSaveError = onboardingProfileSaveError(profile, profileError);
+      if (profileSaveError) {
+        throw new Error(profileSaveError);
       }
 
       router.push("/dashboard");
