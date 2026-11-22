@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getCatalogCourses, type CatalogItem } from "@/lib/resources/verified-catalog";
+import { PUBLIC_RESOURCE_SELECT } from "@/lib/supabase/public-select";
 
 export default async function CoursesPage({
   searchParams,
@@ -11,7 +12,7 @@ export default async function CoursesPage({
   const supabase = await createClient();
   const { data: dbCourses } = await supabase
     .from("resources")
-    .select("*")
+    .select(PUBLIC_RESOURCE_SELECT)
     .eq("resource_type", "course")
     .eq("is_published", true)
     .order("quality_score", { ascending: false })
@@ -34,7 +35,7 @@ export default async function CoursesPage({
           pricing_type: c.pricing_type as string | null,
           description: c.description as string | null,
           subject: undefined as string | undefined,
-          level: undefined as string | undefined,
+          level: (c.difficulty as string | null) ?? undefined,
           source: "db" as const,
         }))
       : catalog.map((c: CatalogItem) => ({
