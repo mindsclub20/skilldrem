@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getCatalogBooks, type CatalogItem } from "@/lib/resources/verified-catalog";
+import { PUBLIC_RESOURCE_SELECT } from "@/lib/supabase/public-select";
 
 export default async function BooksPage({
   searchParams,
@@ -11,7 +12,7 @@ export default async function BooksPage({
   const supabase = await createClient();
   const { data: dbBooks } = await supabase
     .from("resources")
-    .select("*")
+    .select(PUBLIC_RESOURCE_SELECT)
     .in("resource_type", ["book", "ebook"])
     .eq("is_published", true)
     .order("title")
@@ -33,7 +34,7 @@ export default async function BooksPage({
           pricing_type: b.pricing_type as string | null,
           description: b.description as string | null,
           subject: undefined as string | undefined,
-          level: undefined as string | undefined,
+          level: (b.difficulty as string | null) ?? undefined,
           source: "db" as const,
         }))
       : catalog.map((b: CatalogItem) => ({
