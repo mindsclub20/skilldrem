@@ -11,6 +11,16 @@ REVOKE ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public FROM anon;
 REVOKE EXECUTE ON ALL FUNCTIONS IN SCHEMA public FROM anon;
 REVOKE EXECUTE ON ALL FUNCTIONS IN SCHEMA public FROM PUBLIC;
 
+-- PostgreSQL's built-in global default grants EXECUTE on new functions to
+-- PUBLIC. A schema-scoped REVOKE cannot cancel a global default grant, so
+-- remove that default for both roles observed creating public-schema objects.
+-- Existing functions in other schemas are unaffected; explicit per-schema
+-- default grants to anon/authenticated/service_role remain separate.
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres
+  REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC;
+ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin
+  REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC;
+
 ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
   REVOKE ALL ON TABLES FROM anon;
 ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
