@@ -87,24 +87,41 @@ describe("anonymous public Supabase access", () => {
     }
   });
 
+  it("revokes global default PUBLIC function execution for both observed grantors", () => {
+    for (const role of ["postgres", "supabase_admin"]) {
+      expect(migration).toMatch(
+        new RegExp(
+          `ALTER DEFAULT PRIVILEGES FOR ROLE ${role}\\s+REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC;`,
+          "i"
+        )
+      );
+      expect(migration).not.toMatch(
+        new RegExp(
+          `ALTER DEFAULT PRIVILEGES FOR ROLE ${role} IN SCHEMA public\\s+REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC;`,
+          "i"
+        )
+      );
+    }
+  });
+
   it("grants anonymous read-only access only to published journeys and resources", () => {
     expect(migration).toMatch(
-      /GRANT SELECT\s*\([\s\S]*\)\s*ON TABLE public\.journeys TO anon;/i
+      /GRANT SELECT\\s*\\([\\s\\S]*\\)\\s*ON TABLE public\\.journeys TO anon;/i
     );
     expect(migration).toMatch(
-      /GRANT SELECT\s*\([\s\S]*\)\s*ON TABLE public\.resources TO anon;/i
+      /GRANT SELECT\\s*\\([\\s\\S]*\\)\\s*ON TABLE public\\.resources TO anon;/i
     );
     expect(migration).toMatch(
-      /CREATE POLICY journeys_public_read_published[\s\S]*?FOR SELECT[\s\S]*?TO anon[\s\S]*?USING\s*\(is_published\s*=\s*true\)/i
+      /CREATE POLICY journeys_public_read_published[\\s\\S]*?FOR SELECT[\\s\\S]*?TO anon[\\s\\S]*?USING\\s*\\(is_published\\s*=\\s*true\\)/i
     );
     expect(migration).toMatch(
-      /CREATE POLICY resources_public_read_published[\s\S]*?FOR SELECT[\s\S]*?TO anon[\s\S]*?USING\s*\(is_published\s*=\s*true\)/i
+      /CREATE POLICY resources_public_read_published[\\s\\S]*?FOR SELECT[\\s\\S]*?TO anon[\\s\\S]*?USING\\s*\\(is_published\\s*=\\s*true\\)/i
     );
 
     const journeyGrant = migration.match(
-      /GRANT SELECT\s*\(([^)]*)\)\s*ON TABLE public\.journeys TO anon;/i
+      /GRANT SELECT\\s*\\(([^)]*)\\)\\s*ON TABLE public\\.journeys TO anon;/i
     );
     expect(journeyGrant?.[1]).toBeDefined();
-    expect(journeyGrant?.[1]).not.toMatch(/\bcreated_by\b/i);
+    expect(journeyGrant?.[1]).not.toMatch(/\\bcreated_by\\b/i);
   });
 });
