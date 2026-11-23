@@ -9,6 +9,10 @@ const migration = readFileSync(
   ),
   "utf8"
 );
+const verification = readFileSync(
+  new URL("../../../supabase/tests/anon_public_access.sql", import.meta.url),
+  "utf8"
+);
 
 const fields = (selection: string) =>
   selection.split(",").map((field) => field.trim());
@@ -102,6 +106,18 @@ describe("anonymous public Supabase access", () => {
         )
       );
     }
+  });
+
+  it("verifies effective function access and default privilege state after migration", () => {
+    expect(verification).toMatch(
+      /has_function_privilege\('anon', p\.oid, 'EXECUTE'\)/i
+    );
+    expect(verification).toMatch(
+      /d\.defaclnamespace = 0[\s\S]*?acl\.grantee = 0[\s\S]*?acl\.privilege_type = 'EXECUTE'/i
+    );
+    expect(verification).toMatch(
+      /d\.defaclnamespace = 'public'::regnamespace[\s\S]*?acl\.grantee = 'anon'::regrole/i
+    );
   });
 
   it("grants anonymous read-only access only to published journeys and resources", () => {
