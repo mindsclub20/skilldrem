@@ -21,6 +21,14 @@ ALTER DEFAULT PRIVILEGES FOR ROLE postgres
 ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin
   REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC;
 
+-- Preserve the live extensions-schema PUBLIC EXECUTE defaults. The global
+-- revokes above would otherwise silently change future extension-function
+-- access for both roles, even though this migration only hardens public.
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA extensions
+  GRANT EXECUTE ON FUNCTIONS TO PUBLIC;
+ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA extensions
+  GRANT EXECUTE ON FUNCTIONS TO PUBLIC;
+
 ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
   REVOKE ALL ON TABLES FROM anon;
 ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
