@@ -5,6 +5,7 @@ DO $$
 DECLARE
   table_record record;
   sequence_record record;
+  column_record record;
 BEGIN
   -- Check every public table, view, materialized view, and foreign table.
   FOR table_record IN
@@ -100,15 +101,63 @@ BEGIN
     RAISE EXCEPTION 'extensions PUBLIC EXECUTE defaults were not preserved for both grantors';
   END IF;
 
-  IF has_column_privilege('anon', 'public.journeys', 'created_by', 'SELECT') THEN
-    RAISE EXCEPTION 'anon must not read journeys.created_by';
+  -- No unapproved journey columns may be readable by anon.
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns c
+    WHERE c.table_schema = 'public'
+      AND c.table_name = 'journeys'
+      AND has_column_privilege('anon', 'public.journeys', c.column_name, 'SELECT')
+      AND c.column_name NOT IN (
+        'id', 'slug', 'title', 'description', 'category', 'difficulty',
+        'target_outcome', 'estimated_hours', 'is_published', 'is_featured',
+        'cover_image_url'
+      )
+  ) THEN
+    RAISE EXCEPTION 'anon can read an unapproved public.journeys column';
   END IF;
-  IF NOT has_column_privilege('anon', 'public.journeys', 'title', 'SELECT') THEN
-    RAISE EXCEPTION 'anon must be able to read published journey titles';
+
+  -- No unapproved resource columns may be readable by anon.
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns c
+    WHERE c.table_schema = 'public'
+      AND c.table_name = 'resources'
+      AND has_column_privilege('anon', 'public.resources', c.column_name, 'SELECT')
+      AND c.column_name NOT IN (
+        'id', 'title', 'description', 'url', 'resource_type', 'provider',
+        'language', 'pricing_type', 'difficulty', 'duration_hours',
+        'has_certificate', 'quality_score', 'is_published'
+      )
+  ) THEN
+    RAISE EXCEPTION 'anon can read an unapproved public.resources column';
   END IF;
-  IF NOT has_column_privilege('anon', 'public.resources', 'title', 'SELECT') THEN
-    RAISE EXCEPTION 'anon must be able to read published resource titles';
-  END IF;
+
+  -- Every required public catalogue column must remain readable.
+  FOR column_record IN
+    SELECT unnest(ARRAY[
+      'id', 'slug', 'title', 'description', 'category', 'difficulty',
+      'target_outcome', 'estimated_hours', 'is_published', 'is_featured',
+      'cover_image_url'
+    ]) AS column_name
+  LOOP
+    IF NOT has_column_privilege('anon', 'public.journeys', column_record.column_name, 'SELECT') THEN
+      RAISE EXCEPTION 'anon cannot read required public.journeys column %', column_record.column_name;
+    END IF;
+  END LOOP;
+
+  FOR column_record IN
+    SELECT unnest(ARRAY[
+      'id', 'title', 'description', 'url', 'resource_type', 'provider',
+      'language', 'pricing_type', 'difficulty', 'duration_hours',
+      'has_certificate', 'quality_score', 'is_published'
+    ]) AS column_name
+  LOOP
+    IF NOT has_column_privilege('anon', 'public.resources', column_record.column_name, 'SELECT') THEN
+      RAISE EXCEPTION 'anon cannot read required public.resources column %', column_record.column_name;
+    END IF;
+  END LOOP;
+
   IF NOT EXISTS (
     SELECT 1 FROM pg_policies
     WHERE schemaname = 'public'
