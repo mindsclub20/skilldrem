@@ -134,6 +134,18 @@ describe("anonymous public Supabase access", () => {
     );
   });
 
+  it("verifies anon can read only allowlisted columns on the public catalogues", () => {
+    expect(verification).toMatch(/information_schema\.columns/i);
+    expect(verification).toMatch(
+      /has_column_privilege\('anon', 'public\.journeys', c\.column_name, 'SELECT'\)/i
+    );
+    expect(verification).toMatch(
+      /has_column_privilege\('anon', 'public\.resources', c\.column_name, 'SELECT'\)/i
+    );
+    expect(verification).toMatch(/c\.column_name NOT IN \([\s\S]*?cover_image_url[\s\S]*?\)/i);
+    expect(verification).toMatch(/c\.column_name NOT IN \([\s\S]*?is_published[\s\S]*?\)/i);
+  });
+
   it("verifies effective function access and default privilege state after migration", () => {
     expect(verification).toMatch(
       /has_function_privilege\('anon', p\.oid, 'EXECUTE'\)/i
