@@ -6,19 +6,30 @@ DECLARE
   table_record record;
   sequence_record record;
 BEGIN
-  -- Check every public table, not only a hand-picked subset.
+  -- Check every public table, view, materialized view, and foreign table.
   FOR table_record IN
-    SELECT format('%I.%I', schemaname, tablename) AS relation
-    FROM pg_tables
-    WHERE schemaname = 'public'
+    SELECT c.oid AS relation_oid,
+           c.relname AS table_name,
+           format('%I.%I', n.nspname, c.relname) AS relation
+    FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'public'
+      AND c.relkind IN ('r', 'p', 'v', 'm', 'f')
   LOOP
-    IF has_table_privilege('anon', table_record.relation, 'INSERT')
-      OR has_table_privilege('anon', table_record.relation, 'UPDATE')
-      OR has_table_privilege('anon', table_record.relation, 'DELETE')
-      OR has_table_privilege('anon', table_record.relation, 'TRUNCATE')
-      OR has_table_privilege('anon', table_record.relation, 'REFERENCES')
-      OR has_table_privilege('anon', table_record.relation, 'TRIGGER') THEN
-      RAISE EXCEPTION 'anon retains a write or DDL-adjacent privilege on public table %', table_record.relation;
+    IF has_table_privilege('anon', table_record.relation_oid, 'INSERT')
+      OR has_table_privilege('anon', table_record.relation_oid, 'UPDATE')
+      OR has_table_privilege('anon', table_record.relation_oid, 'DELETE')
+      OR has_table_privilege('anon', table_record.relation_oid, 'TRUNCATE')
+      OR has_table_privilege('anon', table_record.relation_oid, 'REFERENCES')
+      OR has_table_privilege('anon', table_record.relation_oid, 'TRIGGER')
+      OR has_table_privilege('anon', table_record.relation_oid, 'MAINTAIN') THEN
+      RAISE EXCEPTION 'anon retains a write or maintenance privilege on public relation %', table_record.relation;
+    END IF;
+
+    -- Anonymous SELECT is limited to approved columns on these two catalogues.
+    IF table_record.table_name NOT IN ('journeys', 'resources')
+      AND has_table_privilege('anon', table_record.relation_oid, 'SELECT') THEN
+      RAISE EXCEPTION 'anon retains SELECT on private public-schema relation %', table_record.relation;
     END IF;
   END LOOP;
 
