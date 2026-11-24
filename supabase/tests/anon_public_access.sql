@@ -75,6 +75,20 @@ BEGIN
     RAISE EXCEPTION 'anon still has default privileges on public-schema objects';
   END IF;
 
+  -- Preserve PUBLIC EXECUTE for new extension functions while hardening public.
+  IF (
+    SELECT count(DISTINCT d.defaclrole)
+    FROM pg_default_acl d
+    CROSS JOIN LATERAL aclexplode(d.defaclacl) acl
+    WHERE d.defaclrole IN ('postgres'::regrole, 'supabase_admin'::regrole)
+      AND d.defaclnamespace = 'extensions'::regnamespace
+      AND d.defaclobjtype = 'f'
+      AND acl.grantee = 0
+      AND acl.privilege_type = 'EXECUTE'
+  ) <> 2 THEN
+    RAISE EXCEPTION 'extensions PUBLIC EXECUTE defaults were not preserved for both grantors';
+  END IF;
+
   IF has_column_privilege('anon', 'public.journeys', 'created_by', 'SELECT') THEN
     RAISE EXCEPTION 'anon must not read journeys.created_by';
   END IF;
