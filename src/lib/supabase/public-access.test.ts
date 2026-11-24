@@ -108,36 +108,50 @@ describe("anonymous public Supabase access", () => {
     }
   });
 
+  it("preserves PUBLIC execution defaults for extension functions outside public", () => {
+    for (const role of ["postgres", "supabase_admin"]) {
+      expect(migration).toMatch(
+        new RegExp(
+          "ALTER DEFAULT PRIVILEGES FOR ROLE " + role + " IN SCHEMA extensions\\s+GRANT EXECUTE ON FUNCTIONS TO PUBLIC;",
+          "i"
+        )
+      );
+    }
+    expect(verification).toMatch(
+      /d\\.defaclnamespace = 'extensions'::regnamespace[\\s\\S]*?acl\\.grantee = 0[\\s\\S]*?acl\\.privilege_type = 'EXECUTE'/i
+    );
+  });
+
   it("verifies effective function access and default privilege state after migration", () => {
     expect(verification).toMatch(
-      /has_function_privilege\('anon', p\.oid, 'EXECUTE'\)/i
+      /has_function_privilege\\('anon', p\\.oid, 'EXECUTE'\\)/i
     );
     expect(verification).toMatch(
-      /d\.defaclnamespace = 0[\s\S]*?acl\.grantee = 0[\s\S]*?acl\.privilege_type = 'EXECUTE'/i
+      /d\\.defaclnamespace = 0[\\s\\S]*?acl\\.grantee = 0[\\s\\S]*?acl\\.privilege_type = 'EXECUTE'/i
     );
     expect(verification).toMatch(
-      /d\.defaclnamespace = 'public'::regnamespace[\s\S]*?acl\.grantee = 'anon'::regrole/i
+      /d\\.defaclnamespace = 'public'::regnamespace[\\s\\S]*?acl\\.grantee = 'anon'::regrole/i
     );
   });
 
   it("grants anonymous read-only access only to published journeys and resources", () => {
     expect(migration).toMatch(
-      /GRANT SELECT\s*\([\s\S]*\)\s*ON TABLE public\.journeys TO anon;/i
+      /GRANT SELECT\\s*\\([\\s\\S]*\\)\\s*ON TABLE public\\.journeys TO anon;/i
     );
     expect(migration).toMatch(
-      /GRANT SELECT\s*\([\s\S]*\)\s*ON TABLE public\.resources TO anon;/i
+      /GRANT SELECT\\s*\\([\\s\\S]*\\)\\s*ON TABLE public\\.resources TO anon;/i
     );
     expect(migration).toMatch(
-      /CREATE POLICY journeys_public_read_published[\s\S]*?FOR SELECT[\s\S]*?TO anon[\s\S]*?USING\s*\(is_published\s*=\s*true\)/i
+      /CREATE POLICY journeys_public_read_published[\\s\\S]*?FOR SELECT[\\s\\S]*?TO anon[\\s\\S]*?USING\\s*\\(is_published\\s*=\\s*true\\)/i
     );
     expect(migration).toMatch(
-      /CREATE POLICY resources_public_read_published[\s\S]*?FOR SELECT[\s\S]*?TO anon[\s\S]*?USING\s*\(is_published\s*=\s*true\)/i
+      /CREATE POLICY resources_public_read_published[\\s\\S]*?FOR SELECT[\\s\\S]*?TO anon[\\s\\S]*?USING\\s*\\(is_published\\s*=\\s*true\\)/i
     );
 
     const journeyGrant = migration.match(
-      /GRANT SELECT\s*\(([^)]*)\)\s*ON TABLE public\.journeys TO anon;/i
+      /GRANT SELECT\\s*\\(([^)]*)\\)\\s*ON TABLE public\\.journeys TO anon;/i
     );
     expect(journeyGrant?.[1]).toBeDefined();
-    expect(journeyGrant?.[1]).not.toMatch(/\bcreated_by\b/i);
+    expect(journeyGrant?.[1]).not.toMatch(/\\bcreated_by\\b/i);
   });
 });
