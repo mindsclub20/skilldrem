@@ -122,6 +122,18 @@ describe("anonymous public Supabase access", () => {
     );
   });
 
+  it("verifies anon cannot maintain or read private public-schema relations", () => {
+    expect(verification).toMatch(
+      /has_table_privilege\('anon', table_record\.relation_oid, 'MAINTAIN'\)/i
+    );
+    expect(verification).toMatch(
+      /table_record\.table_name NOT IN \('journeys', 'resources'\)[\s\S]*?has_table_privilege\('anon', table_record\.relation_oid, 'SELECT'\)/i
+    );
+    expect(verification).toMatch(
+      /c\.relkind IN \('r', 'p', 'v', 'm', 'f'\)/i
+    );
+  });
+
   it("verifies effective function access and default privilege state after migration", () => {
     expect(verification).toMatch(
       /has_function_privilege\('anon', p\.oid, 'EXECUTE'\)/i
