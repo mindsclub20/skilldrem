@@ -178,4 +178,16 @@ describe("anonymous public Supabase access", () => {
     expect(journeyGrant?.[1]).toBeDefined();
     expect(journeyGrant?.[1]).not.toMatch(/\bcreated_by\b/i);
   });
+
+  it("verifies anonymous column-level grants are limited to approved catalogue columns", () => {
+    expect(verification).toMatch(
+      /CROSS JOIN LATERAL aclexplode\\(a\\.attacl\\) acl/i
+    );
+    expect(verification).toMatch(/acl\\.grantee = 'anon'::regrole/i);
+    expect(verification).toMatch(/acl\\.privilege_type <> 'SELECT'/i);
+    expect(verification).toMatch(
+      /c\\.relname NOT IN \\(\\'journeys\\', \\'resources\\'\\)/i
+    );
+    expect(verification).toMatch(/a\\.attname NOT IN \\(/i);
+  });
 });
