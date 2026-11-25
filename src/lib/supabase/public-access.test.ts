@@ -180,9 +180,11 @@ describe("anonymous public Supabase access", () => {
   });
 
   it("verifies anonymous column-level grants are limited to approved catalogue columns", () => {
-    expect(verification).toContain("CROSS JOIN LATERAL aclexplode(a.attacl) acl");
-    expect(verification).toContain("acl.grantee = 'anon'::regrole");
-    expect(verification).toContain("acl.privilege_type <> 'SELECT'");
+    for (const privilege of ["SELECT", "INSERT", "UPDATE", "REFERENCES"]) {
+      expect(verification).toContain(
+        "has_column_privilege('anon', c.oid, a.attnum, '" + privilege + "')"
+      );
+    }
     expect(verification).toContain("c.relname NOT IN ('journeys', 'resources')");
     expect(verification).toContain("a.attname NOT IN (");
   });
