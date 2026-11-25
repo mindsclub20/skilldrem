@@ -34,6 +34,66 @@ BEGIN
     END IF;
   END LOOP;
 
+  -- Table-level REVOKE does not prove that column-level privileges are absent.
+  -- Check effective privileges so grants inherited through PUBLIC are included.
+  -- Private relations must have no anon column access; catalogue relations may
+  -- expose only SELECT on their explicit public allowlists.
+  IF EXISTS (
+    SELECT 1
+    FROM pg_attribute a
+    JOIN pg_class c ON c.oid = a.attrelid
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'public'
+      AND c.relkind IN ('r', 'p', 'v', 'm', 'f')
+      AND a.attnum > 0
+      AND NOT a.attisdropped
+      AND (
+        (
+          c.relname NOT IN ('journeys', 'resources')
+          AND (
+            has_column_privilege('anon', c.oid, a.attnum, 'SELECT')
+            OR has_column_privilege('anon', c.oid, a.attnum, 'INSERT')
+            OR has_column_privilege('anon', c.oid, a.attnum, 'UPDATE')
+            OR has_column_privilege('anon', c.oid, a.attnum, 'REFERENCES')
+          )
+        )
+        OR (
+          c.relname = 'journeys'
+          AND (
+            has_column_privilege('anon', c.oid, a.attnum, 'INSERT')
+            OR has_column_privilege('anon', c.oid, a.attnum, 'UPDATE')
+            OR has_column_privilege('anon', c.oid, a.attnum, 'REFERENCES')
+            OR (
+              a.attname NOT IN (
+                'id', 'slug', 'title', 'description', 'category', 'difficulty',
+                'target_outcome', 'estimated_hours', 'is_published', 'is_featured',
+                'cover_image_url'
+              )
+              AND has_column_privilege('anon', c.oid, a.attnum, 'SELECT')
+            )
+          )
+        )
+        OR (
+          c.relname = 'resources'
+          AND (
+            has_column_privilege('anon', c.oid, a.attnum, 'INSERT')
+            OR has_column_privilege('anon', c.oid, a.attnum, 'UPDATE')
+            OR has_column_privilege('anon', c.oid, a.attnum, 'REFERENCES')
+            OR (
+              a.attname NOT IN (
+                'id', 'title', 'description', 'url', 'resource_type', 'provider',
+                'language', 'pricing_type', 'difficulty', 'duration_hours',
+                'has_certificate', 'quality_score', 'is_published'
+              )
+              AND has_column_privilege('anon', c.oid, a.attnum, 'SELECT')
+            )
+          )
+        )
+      )
+  ) THEN
+    RAISE EXCEPTION 'anon retains an unapproved column-level privilege on a public relation';
+  END IF;
+
   -- Anonymous access to public sequences is not required by the catalogue.
   FOR sequence_record IN
     SELECT format('%I.%I', n.nspname, c.relname) AS relation
