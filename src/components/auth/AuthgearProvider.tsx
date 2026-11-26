@@ -158,6 +158,7 @@ export function AuthgearProvider({ children }: { children: ReactNode }) {
     if (typeof window !== "undefined") {
       sessionStorage.setItem("authgear_next", safeNext);
     }
+    const { default: authgear } = await import("@authgear/web");
     await authgear.startAuthentication({
       redirectURI: `${window.location.origin}/auth/callback`,
       page: "signup",
