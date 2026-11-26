@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="272" height="272" viewBox="0 0 272 272" role="img" aria-labelledby="title desc">
+  <title id="title">Skilldrem mark</title>
+  <desc id="desc">Navy and teal roadmap-inspired Skilldrem icon.</desc>
+  <defs>
+    <linearGradient id="tealPath" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#0B7F75"/>
+      <stop offset="1" stop-color="#0D9488"/>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="272" height="272" rx="68" fill="#1E3A5F"/>
+  <path d="M72 202 C72 144 108 104 150 104 C183 104 200 126 200 153 C200 186 174 206 143 206 C110 206 94 186 94 160 C94 131 113 104 144 78" fill="none" stroke="#FFFFFF" stroke-width="18" stroke-linecap="round"/>
+  <path d="M144 78 L144 56" fill="none" stroke="url(#tealPath)" stroke-width="18" stroke-linecap="round"/>
+  <circle cx="144" cy="56" r="20" fill="#0D9488" stroke="#FFFFFF" stroke-width="8"/>
+  <circle cx="72" cy="202" r="18" fill="#0D9488" stroke="#FFFFFF" stroke-width="8"/>
+  <circle cx="200" cy="153" r="18" fill="#0D9488" stroke="#FFFFFF" stroke-width="8"/>
+</svg>
