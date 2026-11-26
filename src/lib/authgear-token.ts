@@ -8,6 +8,7 @@ export type AuthgearClaims = {
   name?: unknown;
   picture?: unknown;
   exp?: unknown;
+  "https://authgear.com/claims/user/is_verified"?: unknown;
 };
 
 export type AuthgearConfig = {
@@ -36,6 +37,9 @@ export function validateAuthgearClaims(
   if (claims.client_id !== config.clientId) throw new Error("Invalid Authgear client");
   if (claims.role !== "authenticated") {
     throw new Error("Authgear token must include role=authenticated");
+  }
+  if (claims["https://authgear.com/claims/user/is_verified"] !== true) {
+    throw new Error("Authgear user must satisfy the configured verification requirement");
   }
   if (typeof claims.sub !== "string" || !UUID_PATTERN.test(claims.sub)) {
     throw new Error("Authgear subject must be a UUID for the current Skilldrem schema");
