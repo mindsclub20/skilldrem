@@ -1,6 +1,6 @@
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
-import { createRemoteJWKSet, jwtVerify } from "jose";
-import { validateAuthgearClaims } from "@/lib/authgear-token";
+import { createRemoteJWKSet } from "jose";
+import { verifyAuthgearAccessToken } from "@/lib/authgear-jwt";
 
 const endpoint = process.env.NEXT_PUBLIC_AUTHGEAR_ENDPOINT?.replace(/\/$/, "");
 const clientId = process.env.NEXT_PUBLIC_AUTHGEAR_CLIENT_ID;
@@ -44,12 +44,7 @@ export async function getAuthgearSupabase(request: Request) {
 
   try {
     const jwks = await getJwks();
-    const { payload } = await jwtVerify(match[1], jwks, {
-      issuer: endpoint,
-      audience: endpoint,
-      algorithms: ["RS256"],
-    });
-    const user = validateAuthgearClaims(payload, { endpoint, clientId });
+    const user = await verifyAuthgearAccessToken(match[1], jwks, { endpoint, clientId });
 
     const supabase = createSupabaseClient(supabaseUrl, supabaseKey, {
       auth: {
