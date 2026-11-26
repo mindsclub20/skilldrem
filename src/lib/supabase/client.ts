@@ -1,5 +1,4 @@
 import { createClient as createSupabaseClient, type SupabaseClient } from "@supabase/supabase-js";
-import authgear from "@authgear/web";
 
 let browserClient: SupabaseClient<any> | undefined;
 
@@ -17,6 +16,7 @@ export function createClient() {
       detectSessionInUrl: false,
     },
     accessToken: async () => {
+      const { default: authgear } = await import("@authgear/web");
       await authgear.refreshAccessTokenIfNeeded();
       return authgear.accessToken ?? null;
     },
