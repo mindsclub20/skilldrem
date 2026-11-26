@@ -102,7 +102,10 @@ export function AuthgearProvider({ children }: { children: ReactNode }) {
           throw new Error(`Unable to link the Authgear identity. Apply the Authgear database migration first: ${linkError.message}`);
         }
         if (linkStatus === "verification_required") {
-          throw new Error("Verify the email address in Authgear before using this existing Skilldrem account.");
+          throw new Error("Verify your email address in Authgear before signing in to Skilldrem.");
+        }
+        if (linkStatus === "email_claim_required") {
+          throw new Error("Authgear must include the user's email claim in its signed access token. Check the Authgear JWT custom-claims configuration.");
         }
 
         const profile = {
