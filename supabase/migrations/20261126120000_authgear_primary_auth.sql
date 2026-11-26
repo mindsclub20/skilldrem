@@ -105,7 +105,7 @@ begin
 
   -- A verified Supabase account must not be silently duplicated when the
   -- Authgear token does not also assert that its email is verified.
-  if auth.jwt() ->> 'email_verified' <> 'true' then
+  if coalesce(auth.jwt() ->> 'email_verified', 'false') <> 'true' then
     return 'verification_required';
   end if;
 
