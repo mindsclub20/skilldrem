@@ -56,6 +56,96 @@ create policy resources_read_published
   using (is_published);
 
 
+-- Restrict authenticated access to the exact Authgear issuer and app.
+-- This prevents legacy Supabase Auth JWTs from continuing to access user data.
+create policy authgear_only_profiles
+  on public.profiles as restrictive for all to authenticated
+  using (
+    (select auth.jwt() ->> 'iss') = 'https://hazard-vaa5a1.authgear.cloud'
+    and (select auth.jwt() ->> 'client_id') = '2b273d19926b6daa'
+  )
+  with check (
+    (select auth.jwt() ->> 'iss') = 'https://hazard-vaa5a1.authgear.cloud'
+    and (select auth.jwt() ->> 'client_id') = '2b273d19926b6daa'
+  );
+
+create policy authgear_only_user_preferences
+  on public.user_preferences as restrictive for all to authenticated
+  using (
+    (select auth.jwt() ->> 'iss') = 'https://hazard-vaa5a1.authgear.cloud'
+    and (select auth.jwt() ->> 'client_id') = '2b273d19926b6daa'
+  )
+  with check (
+    (select auth.jwt() ->> 'iss') = 'https://hazard-vaa5a1.authgear.cloud'
+    and (select auth.jwt() ->> 'client_id') = '2b273d19926b6daa'
+  );
+
+create policy authgear_only_user_journeys
+  on public.user_journeys as restrictive for all to authenticated
+  using (
+    (select auth.jwt() ->> 'iss') = 'https://hazard-vaa5a1.authgear.cloud'
+    and (select auth.jwt() ->> 'client_id') = '2b273d19926b6daa'
+  )
+  with check (
+    (select auth.jwt() ->> 'iss') = 'https://hazard-vaa5a1.authgear.cloud'
+    and (select auth.jwt() ->> 'client_id') = '2b273d19926b6daa'
+  );
+
+create policy authgear_only_ai_sessions
+  on public.ai_sessions as restrictive for all to authenticated
+  using (
+    (select auth.jwt() ->> 'iss') = 'https://hazard-vaa5a1.authgear.cloud'
+    and (select auth.jwt() ->> 'client_id') = '2b273d19926b6daa'
+  )
+  with check (
+    (select auth.jwt() ->> 'iss') = 'https://hazard-vaa5a1.authgear.cloud'
+    and (select auth.jwt() ->> 'client_id') = '2b273d19926b6daa'
+  );
+
+create policy authgear_only_user_milestone_progress
+  on public.user_milestone_progress as restrictive for all to authenticated
+  using (
+    (select auth.jwt() ->> 'iss') = 'https://hazard-vaa5a1.authgear.cloud'
+    and (select auth.jwt() ->> 'client_id') = '2b273d19926b6daa'
+  )
+  with check (
+    (select auth.jwt() ->> 'iss') = 'https://hazard-vaa5a1.authgear.cloud'
+    and (select auth.jwt() ->> 'client_id') = '2b273d19926b6daa'
+  );
+
+create policy authgear_only_journeys
+  on public.journeys as restrictive for all to authenticated
+  using (
+    (select auth.jwt() ->> 'iss') = 'https://hazard-vaa5a1.authgear.cloud'
+    and (select auth.jwt() ->> 'client_id') = '2b273d19926b6daa'
+  )
+  with check (
+    (select auth.jwt() ->> 'iss') = 'https://hazard-vaa5a1.authgear.cloud'
+    and (select auth.jwt() ->> 'client_id') = '2b273d19926b6daa'
+  );
+
+create policy authgear_only_milestones
+  on public.milestones as restrictive for all to authenticated
+  using (
+    (select auth.jwt() ->> 'iss') = 'https://hazard-vaa5a1.authgear.cloud'
+    and (select auth.jwt() ->> 'client_id') = '2b273d19926b6daa'
+  )
+  with check (
+    (select auth.jwt() ->> 'iss') = 'https://hazard-vaa5a1.authgear.cloud'
+    and (select auth.jwt() ->> 'client_id') = '2b273d19926b6daa'
+  );
+
+create policy authgear_only_resources
+  on public.resources as restrictive for all to authenticated
+  using (
+    (select auth.jwt() ->> 'iss') = 'https://hazard-vaa5a1.authgear.cloud'
+    and (select auth.jwt() ->> 'client_id') = '2b273d19926b6daa'
+  )
+  with check (
+    (select auth.jwt() ->> 'iss') = 'https://hazard-vaa5a1.authgear.cloud'
+    and (select auth.jwt() ->> 'client_id') = '2b273d19926b6daa'
+  );
+
 -- Link an existing Supabase account to Authgear on first login only when both
 -- identity providers assert the same verified email. This preserves the
 -- existing profile, saved chats, journeys, and progress without trusting
@@ -79,6 +169,10 @@ begin
 
   if auth.jwt() ->> 'role' <> 'authenticated' then
     raise exception 'Authenticated role required';
+  end if;
+
+  if auth.jwt() ->> 'client_id' <> '2b273d19926b6daa' then
+    raise exception 'Untrusted Authgear client';
   end if;
 
   authgear_subject := (auth.jwt() ->> 'sub')::uuid;
