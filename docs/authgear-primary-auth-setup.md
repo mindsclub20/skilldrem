@@ -18,7 +18,7 @@ If the production domain differs, use the actual Skilldrem domain.
 The Authgear access token must contain:
 
 - `iss`: `https://hazard-vaa5a1.authgear.cloud`
-- `aud`: the Authgear endpoint
+- `aud`: the Authgear project endpoint (Authgear's JWT access-token documentation specifies the project endpoint as the access-token audience; the client ID is a separate `client_id` claim)
 - `client_id`: `2b273d19926b6daa`
 - `sub`: a UUID
 - `role`: `authenticated`
@@ -40,9 +40,9 @@ Supabase must be configured to trust Authgear's OIDC discovery/JWKS endpoints be
 
 ## Database migration
 
-Review and apply `supabase/migrations/20261126120000_authgear_primary_auth.sql` to the Skilldrem project. It removes foreign keys that require every application identity to exist in `auth.users`, while retaining UUID ownership columns and RLS policies based on `auth.uid()`.
+Review and apply `supabase/migrations/20261126120000_authgear_primary_auth.sql` to the Skilldrem project. It removes foreign keys that require every application identity to exist in `auth.users`, while retaining UUID ownership columns and RLS policies based on `auth.uid()`. The profile admin-flag trigger blocks privilege escalation on both INSERT and UPDATE.\n\nAlso review and apply `supabase/migrations/20261126130000_atomic_roadmap_save.sql`. It adds an RLS-respecting RPC that inserts the journey, all milestones, and the user's enrollment in one database transaction. If any insert fails, the entire save rolls back; the API no longer reports success when enrollment fails.
 
-Authgear documents its generated `sub` as a UUID. The server also rejects non-UUID subjects. If this application's Authgear token does not issue UUID subjects, stop and design a text-ID migration rather than bypassing that validation.
+Authgear documents its generated `sub` as a UUID. The server also rejects non-UUID subjects. Authgear documents the JWT access-token `aud` as the project endpoint (while the ID token audience is the client ID); the server therefore verifies the endpoint audience and separately checks `client_id`. Authgear's `is_verified` access-token claim is a JSON boolean; the SQL RLS policies compare its `->>` text representation with `'true'`. If this application's Authgear token does not issue UUID subjects, stop and design a text-ID migration rather than bypassing that validation.
 
 **Existing account data:** Supabase Auth user IDs and Authgear user IDs are independently generated. On first Authgear login, the migration's `link_authgear_identity()` function links a legacy account only when Authgear and Supabase both confirm the same email address. It migrates the old UUID across profiles, saved AI sessions, journeys, and progress. The function rejects users without Authgear's verified-user claim and is executable only by authenticated JWTs from the configured Authgear issuer and client. If the verified claims are not present, the function declines to link; do not substitute an unverified email match.
 
@@ -55,9 +55,9 @@ Set these for the Skilldrem deployment:
 - `NEXT_PUBLIC_SUPABASE_URL=https://ugabwprhvvwapjdzkieq.supabase.co`
 - `SUPABASE_ANON_KEY=<the project's publishable/anon key>`
 
-There is no `AUTHGEAR_CLIENT_SECRET` variable. Never put a Supabase service-role key in the browser.
+There is no `AUTHGEAR_CLIENT_SECRET` variable. Never put a Supabase service-role key in the browser. The Vercel project environment was inspected without decrypting secrets: its current `NEXT_PUBLIC_SUPABASE_URL` is `https://ugabwprhvvwapjdzkieq.supabase.co`. The older `lxlbuljcecratjypmoxi` project reference in the initial schema notes is historical and must not be used for this Authgear deployment unless the Vercel URL is intentionally changed. Confirm that Supabase Custom OIDC and both migrations target `ugabwprhvvwapjdzkieq`.
 
-## Verification checklist
+## API abuse protection\n\nThe public `/api/ai/discover` route has a bounded process-local fixed-window limiter (8 requests per client IP per minute). This reduces bursts per running instance but is not a distributed quota: serverless instances do not share memory. Configure a Vercel Firewall or shared rate-limit store before substantial public traffic.\n\n## Verification checklist
 
 - Authgear redirects back to `/auth/callback` on localhost and production.
 - Sign-in and sign-up complete through Authgear.
