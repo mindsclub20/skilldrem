@@ -1,6 +1,5 @@
 "use client";
 
-import authgear from "@authgear/web";
 import {
   createContext,
   useCallback,
@@ -63,6 +62,7 @@ export function AuthgearProvider({ children }: { children: ReactNode }) {
         throw new Error("Authgear endpoint or client ID is missing from environment variables.");
       }
 
+      const { default: authgear } = await import("@authgear/web");
       await authgear.configure({
         endpoint,
         clientID,
@@ -147,6 +147,7 @@ export function AuthgearProvider({ children }: { children: ReactNode }) {
     if (typeof window !== "undefined") {
       sessionStorage.setItem("authgear_next", safeNext);
     }
+    const { default: authgear } = await import("@authgear/web");
     await authgear.startAuthentication({
       redirectURI: `${window.location.origin}/auth/callback`,
     });
@@ -165,6 +166,7 @@ export function AuthgearProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(async () => {
     if (typeof window !== "undefined") sessionStorage.removeItem("authgear_next");
+    const { default: authgear } = await import("@authgear/web");
     await authgear.logout({ redirectURI: window.location.origin });
   }, []);
 
