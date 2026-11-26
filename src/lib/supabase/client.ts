@@ -1,7 +1,7 @@
-import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import { createClient as createSupabaseClient, type SupabaseClient } from "@supabase/supabase-js";
 import authgear from "@authgear/web";
 
-let browserClient: ReturnType<typeof createSupabaseClient> | undefined;
+let browserClient: SupabaseClient<any> | undefined;
 
 export function createClient() {
   if (browserClient) return browserClient;
@@ -10,7 +10,7 @@ export function createClient() {
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url || !key) throw new Error("Supabase public configuration is missing");
 
-  browserClient = createSupabaseClient(url, key, {
+  browserClient = createSupabaseClient<any>(url, key, {
     auth: {
       autoRefreshToken: false,
       persistSession: false,
