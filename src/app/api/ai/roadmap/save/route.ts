@@ -1,32 +1,8 @@
 import { NextResponse } from "next/server";
 import { getAuthgearSupabase } from "@/lib/authgear-server";
+import { normalizeRoadmapForSave } from "@/lib/roadmap-save";
 
 export const runtime = "nodejs";
-
-type IncomingMilestone = {
-  title: string;
-  description?: string;
-  estimated_hours?: number;
-  node_type?: string;
-  practice?: string;
-  topics?: string[];
-  resources_hint?: string[];
-};
-
-type IncomingStage = {
-  name: string;
-  milestones: IncomingMilestone[];
-};
-
-type IncomingRoadmap = {
-  title: string;
-  description?: string;
-  target_outcome?: string;
-  difficulty?: string;
-  estimated_hours?: number;
-  category?: string;
-  stages: IncomingStage[];
-};
 
 export async function POST(request: Request) {
   try {
@@ -34,104 +10,46 @@ export async function POST(request: Request) {
     if (!auth) {
       return NextResponse.json({ error: "Sign in required" }, { status: 401 });
     }
-    const { supabase, user } = auth;
 
-    const body = (await request.json()) as { roadmap?: IncomingRoadmap };
-    const roadmap = body.roadmap;
-    if (!roadmap?.title || !Array.isArray(roadmap.stages) || roadmap.stages.length === 0) {
-      return NextResponse.json({ error: "Invalid roadmap payload" }, { status: 400 });
-    }
-
-    const { data: journey, error: jErr } = await supabase
-      .from("journeys")
-      .insert({
-        title: roadmap.title.slice(0, 200),
-        description: roadmap.description?.slice(0, 2000) ?? null,
-        target_outcome: roadmap.target_outcome?.slice(0, 500) ?? null,
-        difficulty: ["beginner", "intermediate", "advanced", "expert"].includes(
-          roadmap.difficulty || ""
-        )
-          ? roadmap.difficulty
-          : "beginner",
-        estimated_hours: roadmap.estimated_hours ?? null,
-        category: roadmap.category?.slice(0, 100) ?? "personalized",
-        is_published: false,
-        is_featured: false,
-        created_by: user.id,
-      })
-      .select("id")
-      .single();
-
-    if (jErr || !journey) {
-      console.error("[roadmap/save] journey", jErr);
+    const body = (await request.json()) as { roadmap?: unknown };
+    const normalized = normalizeRoadmapForSave(body.roadmap as Parameters<typeof normalizeRoadmapForSave>[0]);
+    if (!normalized) {
       return NextResponse.json(
-        { error: jErr?.message || "Failed to create journey" },
-        { status: 500 }
+        { error: "Invalid roadmap. Include a title and between 1 and 100 valid milestones." },
+        { status: 400 }
       );
     }
 
-    const flat: {
-      journey_id: string;
-      title: string;
-      description: string | null;
-      position: number;
-      estimated_hours: number | null;
-      node_type: string;
-      metadata: Record<string, unknown>;
-    }[] = [];
-
-    let pos = 0;
-    for (const stage of roadmap.stages) {
-      for (const m of stage.milestones || []) {
-        if (!m.title) continue;
-        flat.push({
-          journey_id: journey.id,
-          title: m.title.slice(0, 200),
-          description: m.description?.slice(0, 2000) ?? null,
-          position: pos++,
-          estimated_hours: m.estimated_hours ?? null,
-          node_type: ["start", "milestone", "project", "checkpoint", "end"].includes(
-            m.node_type || ""
-          )
-            ? (m.node_type as string)
-            : "milestone",
-          metadata: {
-            stage: stage.name,
-            practice: m.practice ?? null,
-            topics: m.topics ?? [],
-            resources_hint: m.resources_hint ?? [],
-          },
-        });
-      }
-    }
-
-    if (flat.length === 0) {
-      await supabase.from("journeys").delete().eq("id", journey.id);
-      return NextResponse.json({ error: "No valid milestones" }, { status: 400 });
-    }
-
-    const { error: mErr } = await supabase.from("milestones").insert(flat);
-    if (mErr) {
-      console.error("[roadmap/save] milestones", mErr);
-      await supabase.from("journeys").delete().eq("id", journey.id);
-      return NextResponse.json({ error: mErr.message }, { status: 500 });
-    }
-
-    const { error: ujErr } = await supabase.from("user_journeys").insert({
-      user_id: user.id,
-      journey_id: journey.id,
-      status: "active",
-      progress_percent: 0,
+    // One PostgreSQL function call makes journey, milestones, and enrollment atomic.
+    const { data, error } = await auth.supabase.rpc("create_authgear_journey", {
+      p_journey: normalized.journey,
+      p_milestones: normalized.milestones,
     });
 
-    if (ujErr) {
-      console.warn("[roadmap/save] user_journeys", ujErr);
+    if (error) {
+      console.error("[roadmap/save] atomic RPC failed", error);
+      const migrationMissing = error.code === "PGRST202" || error.code === "42883";
+      return NextResponse.json(
+        {
+          error: migrationMissing
+            ? "Roadmap save is not enabled yet. The atomic roadmap migration must be applied to the connected Supabase project."
+            : "Unable to save the complete roadmap. No partial roadmap was committed.",
+          code: migrationMissing ? "MIGRATION_REQUIRED" : "ROADMAP_SAVE_FAILED",
+        },
+        { status: migrationMissing ? 503 : 500 }
+      );
+    }
+
+    const result = data as { journey_id?: string; milestone_count?: number } | null;
+    if (!result?.journey_id || result.milestone_count !== normalized.milestones.length) {
+      console.error("[roadmap/save] unexpected atomic RPC response", data);
+      return NextResponse.json({ error: "Roadmap save returned an invalid result." }, { status: 502 });
     }
 
     return NextResponse.json({
       ok: true,
-      journey_id: journey.id,
-      milestone_count: flat.length,
+      journey_id: result.journey_id,
+      milestone_count: result.milestone_count,
     });
   } catch (err) {
     console.error("[roadmap/save]", err);
