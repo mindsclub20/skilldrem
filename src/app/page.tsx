@@ -8,28 +8,28 @@ import {
   ArrowRight,
   Sparkles,
   Zap,
+  Compass,
+  Target,
+  LineChart,
 } from "lucide-react";
+import { Logo } from "@/components/brand/Logo";
 
 export default function HomePage() {
   return (
     <div className="min-h-screen flex flex-col">
       <header className="sticky top-0 z-50 border-b border-border/60 bg-background/80 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
-          <Link href="/" className="flex items-center gap-2 font-semibold text-lg tracking-tight">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground text-sm font-bold">S</span>
-            SKILLDREM
-          </Link>
+          <Logo variant="wordmark" priority />
           <nav className="hidden md:flex items-center gap-6 text-sm text-muted-foreground">
+            <Link href="/explore" className="hover:text-foreground transition-colors">Explore</Link>
             <Link href="/sprint" className="hover:text-foreground transition-colors">Learning Sprint</Link>
             <Link href="/discover" className="hover:text-foreground transition-colors">Discover</Link>
-            <Link href="/courses" className="hover:text-foreground transition-colors">Courses</Link>
-            <Link href="/books" className="hover:text-foreground transition-colors">Books</Link>
-            <Link href="/mentors" className="hover:text-foreground transition-colors">AI Mentors</Link>
             <Link href="/georny" className="hover:text-foreground transition-colors">Geornies</Link>
+            <Link href="/about" className="hover:text-foreground transition-colors">About</Link>
           </nav>
           <div className="flex items-center gap-3">
             <Link href="/auth/login" className="hidden sm:inline-flex text-sm text-muted-foreground hover:text-foreground">Log in</Link>
-            <Link href="/auth/signup" className="inline-flex h-9 items-center rounded-full bg-primary px-4 text-sm font-medium text-primary-foreground hover:opacity-90 transition-opacity">Get started</Link>
+            <Link href="/auth/signup" className="inline-flex h-9 items-center rounded-full bg-primary px-4 text-sm font-medium text-primary-foreground hover:opacity-90 transition-opacity">Start learning</Link>
           </div>
         </div>
       </header>
@@ -48,13 +48,13 @@ export default function HomePage() {
               Find your path.
             </h1>
             <p className="mt-6 text-lg text-muted-foreground max-w-xl mx-auto">
-              Discover free courses, open ebooks, AI mentors, and personalized learning journeys — all in one place.
+              Discover free courses, open ebooks, AI mentors, and personalized learning journeys — built for focused learners, including students in India.
             </p>
             <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
               <Link href="/sprint" className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-primary px-6 font-semibold text-primary-foreground shadow-lg shadow-primary/15 transition hover:opacity-90">
-                <Zap className="h-4 w-4" /> Build my 7-day learning sprint <ArrowRight className="h-4 w-4" />
+                <Zap className="h-4 w-4" /> Start learning <ArrowRight className="h-4 w-4" />
               </Link>
-              <Link href="/discover" className="inline-flex h-12 items-center justify-center rounded-xl border border-border bg-card px-6 text-sm font-medium transition hover:border-accent/40">Explore learning paths</Link>
+              <Link href="/explore" className="inline-flex h-12 items-center justify-center rounded-xl border border-border bg-card px-6 text-sm font-medium transition hover:border-accent/40">Explore learning paths</Link>
             </div>
             <form action="/discover" className="mt-5 flex flex-col sm:flex-row gap-3 max-w-xl mx-auto">
               <div className="relative flex-1">
@@ -65,6 +65,25 @@ export default function HomePage() {
                 Discover <ArrowRight className="h-4 w-4" />
               </button>
             </form>
+          </div>
+        </section>
+
+        <section className="px-4 pb-16">
+          <div className="mx-auto max-w-6xl">
+            <h2 className="text-center text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">Discover · Plan · Progress</h2>
+            <div className="mt-8 grid gap-6 sm:grid-cols-3">
+              {[
+                { icon: Compass, title: "Discover", body: "Find free-first courses, ebooks, mentors and paths matched to your goal.", href: "/explore" },
+                { icon: Target, title: "Plan", body: "Build a Georny roadmap or a 7–14 day Learning Sprint with daily missions.", href: "/sprint" },
+                { icon: LineChart, title: "Progress", body: "Track missions, milestones and what to learn next in your dashboard.", href: "/auth/login" },
+              ].map((item) => (
+                <Link key={item.title} href={item.href} className="rounded-2xl border border-border bg-card p-6 shadow-sm hover:border-accent/40 transition-colors">
+                  <item.icon className="h-6 w-6 text-accent" />
+                  <h3 className="mt-4 font-semibold text-lg">{item.title}</h3>
+                  <p className="mt-2 text-sm text-muted-foreground leading-relaxed">{item.body}</p>
+                </Link>
+              ))}
+            </div>
           </div>
         </section>
 
@@ -90,7 +109,7 @@ export default function HomePage() {
 
         <section className="border-t border-border bg-muted/40 px-4 py-20">
           <div className="mx-auto max-w-3xl text-center">
-            <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">How SKILLDREM works</h2>
+            <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">How Skilldrem works</h2>
             <ol className="mt-10 grid gap-8 text-left sm:grid-cols-3">
               {[
                 { step: "1", title: "Tell us your goal", body: "Share what you want to learn, your experience, and constraints." },
@@ -111,8 +130,17 @@ export default function HomePage() {
         </section>
       </main>
 
-      <footer className="border-t border-border py-8 text-center text-sm text-muted-foreground">
-        <p>© {new Date().getFullYear()} SKILLDREM. Find your path.</p>
+      <footer className="border-t border-border py-10">
+        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-4 sm:flex-row sm:px-6">
+          <Logo variant="wordmark" />
+          <nav className="flex flex-wrap items-center justify-center gap-4 text-sm text-muted-foreground">
+            <Link href="/about" className="hover:text-foreground">About</Link>
+            <Link href="/explore" className="hover:text-foreground">Explore</Link>
+            <Link href="/privacy" className="hover:text-foreground">Privacy</Link>
+            <Link href="/terms" className="hover:text-foreground">Terms</Link>
+          </nav>
+          <p className="text-sm text-muted-foreground">© {new Date().getFullYear()} Skilldrem. Find your path.</p>
+        </div>
       </footer>
     </div>
   );
