@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import BowlGlow from "@/components/background/BowlGlow";
+import { AuthgearProvider } from "@/components/auth/AuthgearProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -55,7 +56,9 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">
         <BowlGlow />
-        <div className="relative z-[1] flex min-h-full flex-col flex-1">{children}</div>
+        <div className="relative z-[1] flex min-h-full flex-col flex-1">
+          <AuthgearProvider>{children}</AuthgearProvider>
+        </div>
       </body>
     </html>
   );
