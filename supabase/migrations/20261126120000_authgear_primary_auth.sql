@@ -55,4 +55,110 @@ create policy resources_read_published
   to anon, authenticated
   using (is_published);
 
+
+-- Link an existing Supabase account to Authgear on first login only when both
+-- identity providers assert the same verified email. This preserves the
+-- existing profile, saved chats, journeys, and progress without trusting
+-- browser-supplied IDs or unverified email addresses.
+create or replace function public.link_authgear_identity()
+returns boolean
+language plpgsql
+security definer
+set search_path = public, auth, pg_temp
+as $
+declare
+  authgear_subject uuid;
+  verified_email text;
+  legacy_user_id uuid;
+begin
+  if auth.jwt() ->> 'iss' <> 'https://hazard-vaa5a1.authgear.cloud' then
+    raise exception 'Untrusted identity issuer';
+  end if;
+
+  if auth.jwt() ->> 'role' <> 'authenticated' then
+    raise exception 'Authenticated role required';
+  end if;
+
+  if auth.jwt() ->> 'email_verified' <> 'true' then
+    return false;
+  end if;
+
+  authgear_subject := (auth.jwt() ->> 'sub')::uuid;
+  verified_email := lower(trim(auth.jwt() ->> 'email'));
+  if verified_email is null or verified_email = '' then
+    return false;
+  end if;
+
+  if exists (select 1 from public.profiles p where p.id = authgear_subject) then
+    return false;
+  end if;
+
+  select u.id
+    into legacy_user_id
+    from auth.users u
+   where lower(u.email) = verified_email
+     and u.email_confirmed_at is not null
+   limit 1;
+
+  if legacy_user_id is null or legacy_user_id = authgear_subject then
+    return false;
+  end if;
+
+  if not exists (select 1 from public.profiles p where p.id = legacy_user_id) then
+    return false;
+  end if;
+
+  update public.user_preferences
+     set user_id = authgear_subject
+   where user_id = legacy_user_id;
+
+  update public.user_journeys
+     set user_id = authgear_subject
+   where user_id = legacy_user_id;
+
+  update public.ai_sessions
+     set user_id = authgear_subject
+   where user_id = legacy_user_id;
+
+  update public.user_milestone_progress
+     set user_id = authgear_subject
+   where user_id = legacy_user_id;
+
+  update public.journeys
+     set created_by = authgear_subject
+   where created_by = legacy_user_id;
+
+  update public.profiles
+     set id = authgear_subject,
+         email = verified_email,
+         updated_at = now()
+   where id = legacy_user_id;
+
+  return true;
+end;
+$;
+
+revoke all on function public.link_authgear_identity() from public, anon;
+grant execute on function public.link_authgear_identity() to authenticated;
+
+-- A user's self-service profile update must never grant admin privileges.
+create or replace function public.guard_profile_admin_flag()
+returns trigger
+language plpgsql
+set search_path = public
+as $
+begin
+  if new.is_admin is distinct from old.is_admin
+     and current_user not in ('postgres', 'service_role', 'supabase_admin') then
+    raise exception 'is_admin can only be changed by a trusted administrator';
+  end if;
+  return new;
+end;
+$;
+
+drop trigger if exists guard_profile_admin_flag on public.profiles;
+create trigger guard_profile_admin_flag
+before update on public.profiles
+for each row execute function public.guard_profile_admin_flag();
+
 commit;
