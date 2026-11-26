@@ -258,8 +258,20 @@ language plpgsql
 set search_path = public
 as $guard$
 begin
-  if new.is_admin is distinct from old.is_admin
-     and current_user not in ('postgres', 'service_role', 'supabase_admin') then
+  if current_user in ('postgres', 'service_role', 'supabase_admin') then
+    return new;
+  end if;
+
+  -- INSERT must be guarded as well as UPDATE: a user cannot create their own
+  -- profile with is_admin=true before the update trigger ever runs.
+  if tg_op = 'INSERT' then
+    if coalesce(new.is_admin, false) then
+      raise exception 'is_admin can only be granted by a trusted administrator';
+    end if;
+    return new;
+  end if;
+
+  if new.is_admin is distinct from old.is_admin then
     raise exception 'is_admin can only be changed by a trusted administrator';
   end if;
   return new;
@@ -268,7 +280,7 @@ $guard$;
 
 drop trigger if exists guard_profile_admin_flag on public.profiles;
 create trigger guard_profile_admin_flag
-before update on public.profiles
+before insert or update on public.profiles
 for each row execute function public.guard_profile_admin_flag();
 
 commit;
