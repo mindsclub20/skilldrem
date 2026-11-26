@@ -6,9 +6,9 @@ export const runtime = "nodejs";
 /** GET /api/ai/roadmap/progress?journey_id= */
 export async function GET(request: Request) {
   try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return NextResponse.json({ error: "Sign in required" }, { status: 401 });
+    const auth = await getAuthgearSupabase(request);
+    if (!auth) return NextResponse.json({ error: "Sign in required" }, { status: 401 });
+    const { supabase, user } = auth;
 
     const journeyId = new URL(request.url).searchParams.get("journey_id")?.trim();
     if (!journeyId) return NextResponse.json({ error: "journey_id required" }, { status: 400 });
@@ -93,9 +93,9 @@ type ProgressBody = {
 /** POST /api/ai/roadmap/progress — upsert completions */
 export async function POST(request: Request) {
   try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return NextResponse.json({ error: "Sign in required" }, { status: 401 });
+    const auth = await getAuthgearSupabase(request);
+    if (!auth) return NextResponse.json({ error: "Sign in required" }, { status: 401 });
+    const { supabase, user } = auth;
 
     const body = (await request.json()) as ProgressBody;
     const journeyId = body.journey_id?.trim();
