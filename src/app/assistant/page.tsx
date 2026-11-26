@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { MarkdownMessage } from "@/components/ai/MarkdownMessage";
+import { authgearFetch } from "@/lib/authgear-client";
+import { useAuthgear } from "@/components/auth/AuthgearProvider";
 
 type Msg = { role: "user" | "assistant"; content: string; provider?: string };
 type ConversationMeta = {
@@ -22,6 +24,7 @@ const SUGGESTIONS = [
 ];
 
 export default function AssistantPage() {
+  const { logout } = useAuthgear();
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Msg[]>([]);
   const [loading, setLoading] = useState(false);
@@ -40,7 +43,7 @@ export default function AssistantPage() {
 
   const loadConversations = useCallback(async () => {
     try {
-      const res = await fetch("/api/ai/conversations");
+      const res = await authgearFetch("/api/ai/conversations");
       if (!res.ok) return;
       const data = await res.json();
       setConversations(data.conversations ?? []);
@@ -55,7 +58,7 @@ export default function AssistantPage() {
     setError(null);
     setLoading(true);
     try {
-      const res = await fetch(`/api/ai/conversations?id=${encodeURIComponent(id)}`);
+      const res = await authgearFetch(`/api/ai/conversations?id=${encodeURIComponent(id)}`);
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to load");
       const msgs = (data.conversation?.messages ?? []) as Msg[];
@@ -95,7 +98,7 @@ export default function AssistantPage() {
 
   async function deleteConversation(id: string) {
     try {
-      const res = await fetch("/api/ai/conversations", {
+      const res = await authgearFetch("/api/ai/conversations", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id }),
@@ -137,7 +140,7 @@ export default function AssistantPage() {
     setSaving(true);
     try {
       const history = baseMessages.map(({ role, content }) => ({ role, content }));
-      const res = await fetch("/api/ai/chat", {
+      const res = await authgearFetch("/api/ai/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -270,14 +273,13 @@ export default function AssistantPage() {
             <option value="gemini">Gemini</option>
             <option value="auto">Auto fallback</option>
           </select>
-          <form action="/auth/logout" method="post" className="mt-3">
-            <button
-              type="submit"
-              className="w-full text-left text-sm rounded-lg px-3 py-2 text-muted-foreground hover:bg-muted hover:text-foreground"
-            >
-              Sign out
-            </button>
-          </form>
+          <button
+            type="button"
+            onClick={() => void logout()}
+            className="mt-3 w-full text-left text-sm rounded-lg px-3 py-2 text-muted-foreground hover:bg-muted hover:text-foreground"
+          >
+            Sign out
+          </button>
         </div>
       </aside>
 
