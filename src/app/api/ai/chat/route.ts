@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { completeWithFallback, listConfiguredProviders, type AIMessage } from "@/lib/ai/provider";
 import { titleFromMessage } from "@/lib/ai/resource-filter";
-import { createClient } from "@/lib/supabase/server";
+import { getAuthgearSupabase } from "@/lib/authgear-server";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -33,14 +33,11 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
+    const auth = await getAuthgearSupabase(request);
+    if (!auth) {
       return NextResponse.json({ error: "Sign in required" }, { status: 401 });
     }
+    const { supabase, user } = auth;
 
     const body = (await request.json()) as {
       message?: string;
