@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { getAuthgearSupabase } from "@/lib/authgear-server";
 
 export const runtime = "nodejs";
 
