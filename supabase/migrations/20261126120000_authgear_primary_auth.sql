@@ -60,12 +60,14 @@ create policy resources_read_published
 -- identity providers assert the same verified email. This preserves the
 -- existing profile, saved chats, journeys, and progress without trusting
 -- browser-supplied IDs or unverified email addresses.
-create or replace function public.link_authgear_identity()
-returns boolean
+drop function if exists public.link_authgear_identity();
+
+create function public.link_authgear_identity()
+returns text
 language plpgsql
 security definer
 set search_path = public, auth, pg_temp
-as $
+as $$
 declare
   authgear_subject uuid;
   verified_email text;
@@ -79,18 +81,15 @@ begin
     raise exception 'Authenticated role required';
   end if;
 
-  if auth.jwt() ->> 'email_verified' <> 'true' then
-    return false;
-  end if;
-
   authgear_subject := (auth.jwt() ->> 'sub')::uuid;
   verified_email := lower(trim(auth.jwt() ->> 'email'));
-  if verified_email is null or verified_email = '' then
-    return false;
-  end if;
 
   if exists (select 1 from public.profiles p where p.id = authgear_subject) then
-    return false;
+    return 'already_linked';
+  end if;
+
+  if verified_email is null or verified_email = '' then
+    return 'new_user';
   end if;
 
   select u.id
@@ -101,11 +100,17 @@ begin
    limit 1;
 
   if legacy_user_id is null or legacy_user_id = authgear_subject then
-    return false;
+    return 'new_user';
+  end if;
+
+  -- A verified Supabase account must not be silently duplicated when the
+  -- Authgear token does not also assert that its email is verified.
+  if auth.jwt() ->> 'email_verified' <> 'true' then
+    return 'verification_required';
   end if;
 
   if not exists (select 1 from public.profiles p where p.id = legacy_user_id) then
-    return false;
+    return 'new_user';
   end if;
 
   update public.user_preferences
@@ -134,9 +139,9 @@ begin
          updated_at = now()
    where id = legacy_user_id;
 
-  return true;
+  return 'linked';
 end;
-$;
+$$;
 
 revoke all on function public.link_authgear_identity() from public, anon;
 grant execute on function public.link_authgear_identity() to authenticated;
