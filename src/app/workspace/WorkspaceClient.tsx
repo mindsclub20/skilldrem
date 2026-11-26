@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from "react";
 import Link from "next/link";
+import { authgearFetch } from "@/lib/authgear-client";
 
 type Milestone = {
   title: string;
@@ -63,7 +64,7 @@ export default function WorkspaceClient() {
     setSavedId(null);
     setSaveMsg(null);
     try {
-      const res = await fetch("/api/ai/roadmap", {
+      const res = await authgearFetch("/api/ai/roadmap", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -90,7 +91,7 @@ export default function WorkspaceClient() {
     setSaving(true);
     setSaveMsg(null);
     try {
-      const res = await fetch("/api/ai/roadmap/save", {
+      const res = await authgearFetch("/api/ai/roadmap/save", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ roadmap }),
