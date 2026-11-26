@@ -160,6 +160,7 @@ export function AuthgearProvider({ children }: { children: ReactNode }) {
     }
     await authgear.startAuthentication({
       redirectURI: `${window.location.origin}/auth/callback`,
+      page: "signup",
     });
   }, []);
 
