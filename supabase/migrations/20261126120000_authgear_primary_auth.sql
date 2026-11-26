@@ -183,7 +183,11 @@ begin
   end if;
 
   if verified_email is null or verified_email = '' then
-    return 'new_user';
+    return 'email_claim_required';
+  end if;
+
+  if coalesce(auth.jwt() ->> 'email_verified', 'false') <> 'true' then
+    return 'verification_required';
   end if;
 
   select u.id
@@ -195,12 +199,6 @@ begin
 
   if legacy_user_id is null or legacy_user_id = authgear_subject then
     return 'new_user';
-  end if;
-
-  -- A verified Supabase account must not be silently duplicated when the
-  -- Authgear token does not also assert that its email is verified.
-  if coalesce(auth.jwt() ->> 'email_verified', 'false') <> 'true' then
-    return 'verification_required';
   end if;
 
   if not exists (select 1 from public.profiles p where p.id = legacy_user_id) then
