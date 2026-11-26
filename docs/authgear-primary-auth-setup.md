@@ -52,10 +52,13 @@ Supabase must be configured to trust Authgear's OIDC discovery/JWKS endpoints be
 
 Review these migrations and test them in an approved staging environment before any production application:
 
-- `supabase/migrations/20261126120000_authgear_primary_auth.sql` removes foreign keys that require every application identity to exist in `auth.users`, while retaining UUID ownership columns and RLS policies based on `auth.uid()`. The profile admin-flag trigger blocks privilege escalation on both INSERT and UPDATE.
+- `supabase/migrations/20261126120000_authgear_primary_auth.sql` removes foreign keys that require every application identity to exist in `auth.users`, while retaining UUID ownership columns and RLS policies based on `auth.uid()`. The profile admin-flag trigger blocks privilege escalation on both INSERT and UPDATE. It also revokes broad anonymous table, sequence, and function privileges in the public schema, then grants only column-level SELECT on published journeys, resources, and milestones. Owner-aware reads remain authenticated-only; anonymous policies are published-only.
 - `supabase/migrations/20261126130000_atomic_roadmap_save.sql` adds an RLS-respecting RPC that inserts the journey, all milestones, and the user's enrollment in one database transaction. If any insert fails, the entire save rolls back; the API no longer reports success when enrollment fails.
+- `supabase/tests/anon_public_access.sql` is a read-only post-migration verification script. Run it after the primary-auth migration to verify effective anonymous table, column, sequence, function, and default privileges.
 
-Do not apply either migration to production until the Authgear claims, Supabase Custom OIDC trust, account-linking behavior, and cross-user data isolation have been independently verified and the owner has approved the production change.
+Public pages must use the explicit projections in `src/lib/supabase/public-select.ts`; do not replace them with `.select("*")`. The migration does not change the global default `PUBLIC EXECUTE` grant for future functions because that change affects every schema. New public-schema functions must explicitly revoke execution from `PUBLIC` and `anon`; a broader cross-schema default-privilege change remains a separate review item.
+
+Do not apply either migration to production until the Authgear claims, Supabase Custom OIDC trust, account-linking behavior, anonymous least-privilege verification, and cross-user data isolation have been independently verified and the owner has approved the production change.
 
 Authgear documents its generated `sub` as a UUID. The server also rejects non-UUID subjects. Authgear documents the JWT access-token `aud` as the project endpoint (while the ID token audience is the client ID); the server therefore verifies the endpoint audience and separately checks `client_id`. Authgear's `is_verified` access-token claim is a JSON boolean; the SQL RLS policies compare its `->>` text representation with `'true'`. If this application's Authgear token does not issue UUID subjects, stop and design a text-ID migration rather than bypassing that validation.
 
