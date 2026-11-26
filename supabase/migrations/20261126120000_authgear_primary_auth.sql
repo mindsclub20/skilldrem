@@ -151,7 +151,7 @@ create or replace function public.guard_profile_admin_flag()
 returns trigger
 language plpgsql
 set search_path = public
-as $
+as $guard$
 begin
   if new.is_admin is distinct from old.is_admin
      and current_user not in ('postgres', 'service_role', 'supabase_admin') then
@@ -159,7 +159,7 @@ begin
   end if;
   return new;
 end;
-$;
+$guard$;
 
 drop trigger if exists guard_profile_admin_flag on public.profiles;
 create trigger guard_profile_admin_flag
