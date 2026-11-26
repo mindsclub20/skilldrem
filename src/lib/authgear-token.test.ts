@@ -12,6 +12,7 @@ const validClaims = {
   sub: "e3079029-f123-4c56-80c1-c2cd63a5b6af",
   client_id: config.clientId,
   role: "authenticated",
+  "https://authgear.com/claims/user/is_verified": true,
   exp: 1_900_000_000,
 };
 
@@ -34,6 +35,13 @@ describe("validateAuthgearClaims", () => {
   it("requires the authenticated database role", () => {
     expect(() => validateAuthgearClaims({ ...validClaims, role: "anon" }, config)).toThrow();
     expect(() => validateAuthgearClaims({ ...validClaims, role: undefined }, config)).toThrow();
+  });
+
+  it("rejects unverified identities", () => {
+    expect(() => validateAuthgearClaims({
+      ...validClaims,
+      "https://authgear.com/claims/user/is_verified": false,
+    }, config)).toThrow();
   });
 
   it("requires a UUID subject because Skilldrem's ownership columns are UUID", () => {
