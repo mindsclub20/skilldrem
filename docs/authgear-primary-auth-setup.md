@@ -22,8 +22,9 @@ The Authgear access token must contain:
 - `client_id`: `2b273d19926b6daa`
 - `sub`: a UUID
 - `role`: `authenticated`
+- `email` and `email_verified`: present in the JWT for verified-email account linking
 
-Configure the `role=authenticated` custom claim using Authgear's JWT access-token custom-claims hook. Do not derive authorization roles from user-editable profile metadata. Keep the token signing algorithm at RS256.
+Configure the `role=authenticated`, `email`, and `email_verified` claims using Authgear's JWT access-token custom-claims hook. Do not derive authorization roles from user-editable profile metadata. Keep the token signing algorithm at RS256.
 
 ## Supabase third-party authentication
 
@@ -42,7 +43,7 @@ Review and apply `supabase/migrations/20261126120000_authgear_primary_auth.sql` 
 
 Authgear documents its generated `sub` as a UUID. The server also rejects non-UUID subjects. If this application's Authgear token does not issue UUID subjects, stop and design a text-ID migration rather than bypassing that validation.
 
-**Existing account data:** Supabase Auth user IDs and Authgear user IDs are independently generated. The migration does not silently merge identities. Before switching existing users, explicitly map each existing Supabase user to the corresponding Authgear identity and migrate ownership IDs for that account. Do not match accounts by an unverified email address.
+**Existing account data:** Supabase Auth user IDs and Authgear user IDs are independently generated. On first Authgear login, the migration's `link_authgear_identity()` function links a legacy account only when Authgear and Supabase both confirm the same email address. It migrates the old UUID across profiles, saved AI sessions, journeys, and progress. The function rejects unverified email claims and is executable only by authenticated JWTs from the configured Authgear issuer. If the verified claims are not present, the function declines to link; do not substitute an unverified email match.
 
 ## Vercel environment variables
 
