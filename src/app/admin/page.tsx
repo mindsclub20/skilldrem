@@ -2,10 +2,14 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/client";
 import { useAuthgear } from "@/components/auth/AuthgearProvider";
+import { authgearFetch } from "@/lib/authgear-client";
 
 type AdminProfile = { is_admin: boolean; full_name: string | null };
+type AdminOverview = {
+  profile: AdminProfile;
+  counts: { journeys: number; resources: number; users: number };
+};
 
 export default function AdminPage() {
   const { user } = useAuthgear();
@@ -15,27 +19,22 @@ export default function AdminPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!user?.sub) return;
+    if (!user?.sub) {
+      setLoading(false);
+      return;
+    }
+
     let active = true;
-
     async function loadAdminData() {
-      const supabase = createClient();
-      const [profileResult, journeysResult, resourcesResult, usersResult] = await Promise.all([
-        supabase.from("profiles").select("is_admin, full_name").eq("id", user!.sub).maybeSingle(),
-        supabase.from("journeys").select("*", { count: "exact", head: true }),
-        supabase.from("resources").select("*", { count: "exact", head: true }),
-        supabase.from("profiles").select("*", { count: "exact", head: true }),
-      ]);
-
+      const response = await authgearFetch("/api/admin/overview", { cache: "no-store" });
+      const payload = (await response.json()) as AdminOverview | { error?: string };
+      if (!response.ok) {
+        throw new Error("error" in payload && payload.error ? payload.error : "Unable to load admin dashboard.");
+      }
       if (!active) return;
-      setProfile(profileResult.data as AdminProfile | null);
-      setCounts({
-        journeys: journeysResult.count ?? 0,
-        resources: resourcesResult.count ?? 0,
-        users: usersResult.count ?? 0,
-      });
-      const queryError = profileResult.error ?? journeysResult.error ?? resourcesResult.error ?? usersResult.error;
-      if (queryError) setError(queryError.message);
+      const overview = payload as AdminOverview;
+      setProfile(overview.profile);
+      setCounts(overview.counts);
       setLoading(false);
     }
 
