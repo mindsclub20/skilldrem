@@ -194,16 +194,17 @@ begin
   authgear_subject := (auth.jwt() ->> 'sub')::uuid;
   verified_email := lower(trim(auth.jwt() ->> 'email'));
 
-  if exists (select 1 from public.profiles p where p.id = authgear_subject) then
-    return 'already_linked';
+  -- Enforce verification before every return path, including already-linked users.
+  if coalesce(auth.jwt() ->> 'https://authgear.com/claims/user/is_verified', 'false') <> 'true' then
+    return 'verification_required';
   end if;
 
   if verified_email is null or verified_email = '' then
     return 'email_claim_required';
   end if;
 
-  if coalesce(auth.jwt() ->> 'https://authgear.com/claims/user/is_verified', 'false') <> 'true' then
-    return 'verification_required';
+  if exists (select 1 from public.profiles p where p.id = authgear_subject) then
+    return 'already_linked';
   end if;
 
   select u.id
