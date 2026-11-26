@@ -93,31 +93,35 @@ export function AuthgearProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      if (active) {
+      if (active && currentUser) {
+        const supabase = createSupabaseClient();
+        // Link a pre-existing Supabase account by verified email before
+        // creating a new profile, so saved chats and learning progress survive.
+        const { data: linkStatus, error: linkError } = await supabase.rpc("link_authgear_identity");
+        if (linkError) {
+          throw new Error(`Unable to link the Authgear identity. Apply the Authgear database migration first: ${linkError.message}`);
+        }
+        if (linkStatus === "verification_required") {
+          throw new Error("Verify the email address in Authgear before using this existing Skilldrem account.");
+        }
+
+        const profile = {
+          id: currentUser.sub,
+          email: currentUser.email ?? null,
+          full_name: currentUser.name ?? null,
+          avatar_url: currentUser.picture ?? null,
+        };
+        const { error: profileError } = await supabase
+          .from("profiles")
+          .upsert(profile, { onConflict: "id", ignoreDuplicates: false });
+        if (profileError) {
+          throw new Error(`Unable to initialize the Skilldrem profile: ${profileError.message}`);
+        }
         setUser(currentUser);
         setReady(true);
-        if (currentUser) {
-          const supabase = createSupabaseClient();
-          // Link a pre-existing Supabase account by verified email before
-          // creating a new profile, so saved chats and learning progress survive.
-          const { error: linkError } = await supabase.rpc("link_authgear_identity");
-          if (linkError) {
-            console.warn("[authgear] legacy account link deferred:", linkError.message);
-          }
-
-          const profile = {
-            id: currentUser.sub,
-            email: currentUser.email ?? null,
-            full_name: currentUser.name ?? null,
-            avatar_url: currentUser.picture ?? null,
-          };
-          const { error: profileError } = await supabase
-            .from("profiles")
-            .upsert(profile, { onConflict: "id", ignoreDuplicates: false });
-          if (profileError) {
-            console.warn("[authgear] profile bootstrap deferred:", profileError.message);
-          }
-        }
+      } else if (active) {
+        setUser(null);
+        setReady(true);
       }
     }
 
@@ -125,6 +129,9 @@ export function AuthgearProvider({ children }: { children: ReactNode }) {
       if (!active) return;
       setError(cause instanceof Error ? cause.message : "Authgear initialization failed");
       setReady(true);
+      if (window.location.pathname === "/auth/callback") {
+        router.replace("/auth/login?error=authgear");
+      }
     });
 
     return () => {
