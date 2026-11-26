@@ -22,9 +22,10 @@ The Authgear access token must contain:
 - `client_id`: `2b273d19926b6daa`
 - `sub`: a UUID
 - `role`: `authenticated`
-- `email` and `email_verified`: present in the JWT for verified-email account linking
+- `email`: present in the JWT for verified-email account linking
+- `https://authgear.com/claims/user/is_verified`: `true`, with Authgear's verification rule configured to require a verified email
 
-Configure the `role=authenticated`, `email`, and `email_verified` claims using Authgear's JWT access-token custom-claims hook. Do not derive authorization roles from user-editable profile metadata. Keep the token signing algorithm at RS256.
+Configure the `role=authenticated` and `email` claims using Authgear's JWT access-token custom-claims hook. In Authgear's Authentication → Login Methods → Verification settings, configure the verified-user condition to require a verified email; the JWT must then contain `https://authgear.com/claims/user/is_verified: true`. Do not derive authorization roles from user-editable profile metadata. Keep the token signing algorithm at RS256.
 
 ## Supabase third-party authentication
 
@@ -43,7 +44,7 @@ Review and apply `supabase/migrations/20261126120000_authgear_primary_auth.sql` 
 
 Authgear documents its generated `sub` as a UUID. The server also rejects non-UUID subjects. If this application's Authgear token does not issue UUID subjects, stop and design a text-ID migration rather than bypassing that validation.
 
-**Existing account data:** Supabase Auth user IDs and Authgear user IDs are independently generated. On first Authgear login, the migration's `link_authgear_identity()` function links a legacy account only when Authgear and Supabase both confirm the same email address. It migrates the old UUID across profiles, saved AI sessions, journeys, and progress. The function rejects unverified email claims and is executable only by authenticated JWTs from the configured Authgear issuer. If the verified claims are not present, the function declines to link; do not substitute an unverified email match.
+**Existing account data:** Supabase Auth user IDs and Authgear user IDs are independently generated. On first Authgear login, the migration's `link_authgear_identity()` function links a legacy account only when Authgear and Supabase both confirm the same email address. It migrates the old UUID across profiles, saved AI sessions, journeys, and progress. The function rejects users without Authgear's verified-user claim and is executable only by authenticated JWTs from the configured Authgear issuer and client. If the verified claims are not present, the function declines to link; do not substitute an unverified email match.
 
 ## Vercel environment variables
 
