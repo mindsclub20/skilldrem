@@ -98,6 +98,13 @@ export function AuthgearProvider({ children }: { children: ReactNode }) {
         setReady(true);
         if (currentUser) {
           const supabase = createSupabaseClient();
+          // Link a pre-existing Supabase account by verified email before
+          // creating a new profile, so saved chats and learning progress survive.
+          const { error: linkError } = await supabase.rpc("link_authgear_identity");
+          if (linkError) {
+            console.warn("[authgear] legacy account link deferred:", linkError.message);
+          }
+
           const profile = {
             id: currentUser.sub,
             email: currentUser.email ?? null,
