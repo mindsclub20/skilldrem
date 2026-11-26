@@ -9,11 +9,13 @@ The supplied application must be an **Authgear Single Page Application (public c
 Configure these URIs in the Authgear application:
 
 - Local authorized redirect: `http://localhost:3000/auth/callback`
-- Production authorized redirect: `https://skilldrem.vercel.app/auth/callback`
+- Current Vercel main-branch alias authorized redirect: `https://skilldrem-git-main-bvshyam7-4334.vercel.app/auth/callback`
+- Current Authgear implementation preview redirect: `https://skilldrem-n374j2to6-bvshyam7-4334.vercel.app/auth/callback`
 - Local post-logout redirect: `http://localhost:3000`
-- Production post-logout redirect: `https://skilldrem.vercel.app`
+- Current Vercel main-branch alias post-logout redirect: `https://skilldrem-git-main-bvshyam7-4334.vercel.app`
+- Preview post-logout redirect: `https://skilldrem-n374j2to6-bvshyam7-4334.vercel.app`
 
-If the production domain differs, use the actual Skilldrem domain.
+The previously documented `https://skilldrem.vercel.app` domain is not currently attached to the connected Vercel project. The project currently lists `skilldrem-bvshyam7-4334.vercel.app` and `skilldrem-git-main-bvshyam7-4334.vercel.app`; its latest main-branch deployment is marked CANCELED. Treat the main-branch alias as provisional until a production deployment is successfully promoted. If a custom domain is added, register its exact callback and post-logout URLs in Authgear too. Authgear redirect URI matching is exact, so add only the origins you intend to use.
 
 The Authgear access token must contain:
 
@@ -26,6 +28,10 @@ The Authgear access token must contain:
 - `https://authgear.com/claims/user/is_verified`: `true`, with Authgear's verification rule configured to require a verified email
 
 Configure the `role=authenticated` and `email` claims using Authgear's JWT access-token custom-claims hook. In Authgear's Authentication → Login Methods → Verification settings, configure the verified-user condition to require a verified email; the JWT must then contain `https://authgear.com/claims/user/is_verified: true`. Do not derive authorization roles from user-editable profile metadata. Keep the token signing algorithm at RS256.
+
+## Live provider metadata check
+
+The configured Authgear discovery URL is reachable and reports the expected issuer `https://hazard-vaa5a1.authgear.cloud`, an RS256 JWKS endpoint, Authorization Code and Refresh Token grants, and `S256` PKCE support. Its token endpoint advertises `none` as a supported client authentication method, consistent with a public client. The JWKS currently publishes an RS256 RSA signing key. This confirms public OIDC metadata only; it does **not** prove that the Authgear application has enabled JWT access tokens, added the custom `role` and `email` claims, or configured verified-email rules. Those require an authenticated Authgear Portal check and a real test login.
 
 ## Supabase third-party authentication
 
