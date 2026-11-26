@@ -1,17 +1,15 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { getAuthgearSupabase } from "@/lib/authgear-server";
 
 export const runtime = "nodejs";
 
 /** List conversations for the signed-in user. */
 export async function GET(request: Request) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json({ error: "Sign in required" }, { status: 401 });
-  }
+  const auth = await getAuthgearSupabase(request);
+    if (!auth) {
+      return NextResponse.json({ error: "Sign in required" }, { status: 401 });
+    }
+    const { supabase, user } = auth;
 
   const { searchParams } = new URL(request.url);
   const id = searchParams.get("id");
@@ -48,13 +46,11 @@ export async function GET(request: Request) {
 
 /** Delete a conversation owned by the user. */
 export async function DELETE(request: Request) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json({ error: "Sign in required" }, { status: 401 });
-  }
+  const auth = await getAuthgearSupabase(request);
+    if (!auth) {
+      return NextResponse.json({ error: "Sign in required" }, { status: 401 });
+    }
+    const { supabase, user } = auth;
 
   const body = (await request.json().catch(() => ({}))) as { id?: string };
   const id = body.id?.trim();
