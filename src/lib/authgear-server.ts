@@ -8,12 +8,29 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey =
   process.env.SUPABASE_ANON_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-let remoteJwks: ReturnType<typeof createRemoteJWKSet> | undefined;
+let remoteJwksPromise: Promise<ReturnType<typeof createRemoteJWKSet>> | undefined;
 
-function getJwks() {
+async function getJwks() {
   if (!endpoint) throw new Error("NEXT_PUBLIC_AUTHGEAR_ENDPOINT is not configured");
-  remoteJwks ??= createRemoteJWKSet(new URL(`${endpoint}/oauth2/jwks`));
-  return remoteJwks;
+  remoteJwksPromise ??= (async () => {
+    const response = await fetch(`${endpoint}/.well-known/openid-configuration`, {
+      headers: { Accept: "application/json" },
+      cache: "force-cache",
+    });
+    if (!response.ok) throw new Error("Unable to load Authgear OIDC discovery metadata");
+    const discovery = (await response.json()) as { jwks_uri?: string; issuer?: string };
+    if (discovery.issuer !== endpoint || !discovery.jwks_uri) {
+      throw new Error("Authgear OIDC discovery metadata does not match the configured issuer");
+    }
+    return createRemoteJWKSet(new URL(discovery.jwks_uri));
+  })();
+
+  try {
+    return await remoteJwksPromise;
+  } catch (error) {
+    remoteJwksPromise = undefined;
+    throw error;
+  }
 }
 
 export async function getAuthgearSupabase(request: Request) {
@@ -26,7 +43,8 @@ export async function getAuthgearSupabase(request: Request) {
   }
 
   try {
-    const { payload } = await jwtVerify(match[1], getJwks(), {
+    const jwks = await getJwks();
+    const { payload } = await jwtVerify(match[1], jwks, {
       issuer: endpoint,
       audience: endpoint,
       algorithms: ["RS256"],
