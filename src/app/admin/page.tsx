@@ -1,33 +1,73 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/client";
+import { useAuthgear } from "@/components/auth/AuthgearProvider";
 
-export default async function AdminPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/auth/login?redirect=/admin");
+type AdminProfile = { is_admin: boolean; full_name: string | null };
 
-  const { data: profile } = await supabase.from("profiles").select("is_admin, full_name").eq("id", user.id).single();
-  const { data: roles } = await supabase.from("admin_roles").select("role").eq("user_id", user.id);
-  const isAdmin = profile?.is_admin || (roles && roles.length > 0);
+export default function AdminPage() {
+  const { user } = useAuthgear();
+  const [profile, setProfile] = useState<AdminProfile | null>(null);
+  const [counts, setCounts] = useState({ journeys: 0, resources: 0, users: 0 });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!user?.sub) return;
+    let active = true;
+
+    async function loadAdminData() {
+      const supabase = createClient();
+      const [profileResult, journeysResult, resourcesResult, usersResult] = await Promise.all([
+        supabase.from("profiles").select("is_admin, full_name").eq("id", user!.sub).maybeSingle(),
+        supabase.from("journeys").select("*", { count: "exact", head: true }),
+        supabase.from("resources").select("*", { count: "exact", head: true }),
+        supabase.from("profiles").select("*", { count: "exact", head: true }),
+      ]);
+
+      if (!active) return;
+      setProfile(profileResult.data as AdminProfile | null);
+      setCounts({
+        journeys: journeysResult.count ?? 0,
+        resources: resourcesResult.count ?? 0,
+        users: usersResult.count ?? 0,
+      });
+      const queryError = profileResult.error ?? journeysResult.error ?? resourcesResult.error ?? usersResult.error;
+      if (queryError) setError(queryError.message);
+      setLoading(false);
+    }
+
+    void loadAdminData().catch((cause: unknown) => {
+      if (!active) return;
+      setError(cause instanceof Error ? cause.message : "Unable to load admin dashboard.");
+      setLoading(false);
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [user?.sub]);
+
+  const isAdmin = profile?.is_admin === true;
+
+  if (loading) {
+    return <div className="min-h-screen flex items-center justify-center text-sm text-muted-foreground">Loading admin access…</div>;
+  }
 
   if (!isAdmin) {
     return (
       <div className="min-h-screen flex items-center justify-center px-4">
         <div className="text-center max-w-md">
           <h1 className="text-xl font-bold">Admin access required</h1>
-          <p className="mt-2 text-muted-foreground text-sm">Your account is not authorized. Admin checks use server-side profile.is_admin and admin_roles — never trust the client alone.</p>
+          <p className="mt-2 text-muted-foreground text-sm">This account is not authorized to access the content dashboard.</p>
           <Link href="/dashboard" className="mt-6 inline-block text-accent font-medium">Back to dashboard</Link>
+          {error && <p role="alert" className="mt-3 text-xs text-red-600">{error}</p>}
         </div>
       </div>
     );
   }
-
-  const [{ count: journeyCount }, { count: resourceCount }, { count: userCount }] = await Promise.all([
-    supabase.from("journeys").select("*", { count: "exact", head: true }),
-    supabase.from("resources").select("*", { count: "exact", head: true }),
-    supabase.from("profiles").select("*", { count: "exact", head: true }),
-  ]);
 
   return (
     <div className="min-h-screen">
@@ -39,21 +79,22 @@ export default async function AdminPage() {
       </header>
       <main className="mx-auto max-w-6xl px-4 py-10">
         <h1 className="text-2xl font-bold">Content CMS</h1>
-        <p className="text-muted-foreground mt-1">Signed in as {profile?.full_name || user.email}</p>
+        <p className="text-muted-foreground mt-1">Signed in as {profile?.full_name || user?.email || "Admin"}</p>
+        {error && <p role="alert" className="mt-3 text-sm text-red-600">{error}</p>}
         <div className="mt-8 grid gap-4 sm:grid-cols-3">
           {[
-            { label: "Journeys", value: journeyCount ?? 0 },
-            { label: "Resources", value: resourceCount ?? 0 },
-            { label: "Users", value: userCount ?? 0 },
-          ].map((s) => (
-            <div key={s.label} className="rounded-xl border border-border bg-card p-5">
-              <p className="text-sm text-muted-foreground">{s.label}</p>
-              <p className="text-3xl font-bold mt-1">{s.value}</p>
+            { label: "Journeys", value: counts.journeys },
+            { label: "Resources", value: counts.resources },
+            { label: "Profiles", value: counts.users },
+          ].map((stat) => (
+            <div key={stat.label} className="rounded-xl border border-border bg-card p-5">
+              <p className="text-sm text-muted-foreground">{stat.label}</p>
+              <p className="text-3xl font-bold mt-1">{stat.value}</p>
             </div>
           ))}
         </div>
         <p className="mt-10 text-sm text-muted-foreground">
-          Publish Geornies and resources via SQL seed or future CMS forms. RLS ensures only admins can write curated tables.
+          Publish Geornies and resources via the approved admin workflow. Database RLS remains the authority for all writes.
         </p>
       </main>
     </div>
