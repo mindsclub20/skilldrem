@@ -217,10 +217,6 @@ begin
     return 'new_user';
   end if;
 
-  if not exists (select 1 from public.profiles p where p.id = legacy_user_id) then
-    return 'new_user';
-  end if;
-
   update public.user_preferences
      set user_id = authgear_subject
    where user_id = legacy_user_id;
