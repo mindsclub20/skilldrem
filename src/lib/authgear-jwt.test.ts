@@ -21,16 +21,17 @@ async function makeKeySet() {
 }
 
 async function makeToken(privateKey: Parameters<SignJWT["sign"]>[0], overrides: Record<string, unknown> = {}) {
+  const { aud: requestedAudience, ...customClaims } = overrides;
   return new SignJWT({
     client_id: config.clientId,
     role: "authenticated",
     email: "learner@example.com",
     "https://authgear.com/claims/user/is_verified": true,
-    ...overrides,
+    ...customClaims,
   })
     .setProtectedHeader({ alg: "RS256", kid: "test-key" })
     .setIssuer(endpoint)
-    .setAudience(endpoint)
+    .setAudience((requestedAudience as string | undefined) ?? endpoint)
     .setSubject(subject)
     .setIssuedAt()
     .setExpirationTime("2h")
