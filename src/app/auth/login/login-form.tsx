@@ -11,6 +11,7 @@ export default function LoginForm() {
   const searchParams = useSearchParams();
   const { login, error: configError } = useAuthgear();
   const redirect = searchParams.get("redirect") ?? "/assistant";
+  const callbackError = searchParams.get("error") === "authgear";
 
   async function handleLogin() {
     setLoading(true);
@@ -35,9 +36,9 @@ export default function LoginForm() {
           <p className="mt-2 text-sm text-muted-foreground">Sign in securely with Authgear</p>
         </div>
         <div className="rounded-2xl border border-border bg-card/90 backdrop-blur p-6 space-y-4">
-          {(error || configError) && (
+          {(error || configError || callbackError) && (
             <div role="alert" className="text-sm text-red-600 bg-red-50 dark:bg-red-950/40 px-3 py-2 rounded-lg">
-              {error || configError}
+              {error || configError || (callbackError ? "Authgear sign-in could not be completed. Check your account verification and try again." : null)}
             </div>
           )}
           <button
