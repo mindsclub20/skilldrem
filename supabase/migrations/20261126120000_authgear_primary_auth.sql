@@ -194,6 +194,10 @@ begin
   authgear_subject := (auth.jwt() ->> 'sub')::uuid;
   verified_email := lower(trim(auth.jwt() ->> 'email'));
 
+  if authgear_subject is null or auth.uid() is distinct from authgear_subject then
+    raise exception 'Authgear subject does not match database identity';
+  end if;
+
   -- Enforce verification before every return path, including already-linked users.
   if coalesce(auth.jwt() ->> 'https://authgear.com/claims/user/is_verified', 'false') <> 'true' then
     return 'verification_required';
