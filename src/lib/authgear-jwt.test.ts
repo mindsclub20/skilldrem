@@ -20,7 +20,7 @@ async function makeKeySet() {
   return { pair, jwks: createLocalJWKSet({ keys: [jwk] }) };
 }
 
-async function makeToken(privateKey: CryptoKey | unknown, overrides: Record<string, unknown> = {}) {
+async function makeToken(privateKey: Parameters<SignJWT["sign"]>[0], overrides: Record<string, unknown> = {}) {
   return new SignJWT({
     client_id: config.clientId,
     role: "authenticated",
@@ -34,7 +34,7 @@ async function makeToken(privateKey: CryptoKey | unknown, overrides: Record<stri
     .setSubject(subject)
     .setIssuedAt()
     .setExpirationTime("2h")
-    .sign(privateKey as never);
+    .sign(privateKey);
 }
 
 describe("verifyAuthgearAccessToken", () => {
