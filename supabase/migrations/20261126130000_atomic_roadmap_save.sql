@@ -40,11 +40,20 @@ begin
     raise exception 'Authgear subject does not match database identity' using errcode = '42501';
   end if;
 
-  if jsonb_typeof(p_journey) <> 'object'
-     or jsonb_typeof(p_milestones) <> 'array'
-     or jsonb_array_length(p_milestones) < 1
-     or jsonb_array_length(p_milestones) > 100 then
-    raise exception 'Invalid roadmap payload';
+  if p_journey is null or jsonb_typeof(p_journey) is distinct from 'object' then
+    raise exception 'Invalid journey payload';
+  end if;
+
+  if nullif(trim(p_journey ->> 'title'), '') is null then
+    raise exception 'Journey title is required';
+  end if;
+
+  if p_milestones is null or jsonb_typeof(p_milestones) is distinct from 'array' then
+    raise exception 'Invalid milestones payload';
+  end if;
+
+  if jsonb_array_length(p_milestones) < 1 or jsonb_array_length(p_milestones) > 100 then
+    raise exception 'Roadmap must contain between 1 and 100 milestones';
   end if;
 
   insert into public.journeys (
