@@ -63,10 +63,12 @@ create policy authgear_only_profiles
   using (
     (select auth.jwt() ->> 'iss') = 'https://hazard-vaa5a1.authgear.cloud'
     and (select auth.jwt() ->> 'client_id') = '2b273d19926b6daa'
+    and (select auth.jwt() ->> 'https://authgear.com/claims/user/is_verified') = 'true'
   )
   with check (
     (select auth.jwt() ->> 'iss') = 'https://hazard-vaa5a1.authgear.cloud'
     and (select auth.jwt() ->> 'client_id') = '2b273d19926b6daa'
+    and (select auth.jwt() ->> 'https://authgear.com/claims/user/is_verified') = 'true'
   );
 
 create policy authgear_only_user_preferences
@@ -74,10 +76,12 @@ create policy authgear_only_user_preferences
   using (
     (select auth.jwt() ->> 'iss') = 'https://hazard-vaa5a1.authgear.cloud'
     and (select auth.jwt() ->> 'client_id') = '2b273d19926b6daa'
+    and (select auth.jwt() ->> 'https://authgear.com/claims/user/is_verified') = 'true'
   )
   with check (
     (select auth.jwt() ->> 'iss') = 'https://hazard-vaa5a1.authgear.cloud'
     and (select auth.jwt() ->> 'client_id') = '2b273d19926b6daa'
+    and (select auth.jwt() ->> 'https://authgear.com/claims/user/is_verified') = 'true'
   );
 
 create policy authgear_only_user_journeys
@@ -85,10 +89,12 @@ create policy authgear_only_user_journeys
   using (
     (select auth.jwt() ->> 'iss') = 'https://hazard-vaa5a1.authgear.cloud'
     and (select auth.jwt() ->> 'client_id') = '2b273d19926b6daa'
+    and (select auth.jwt() ->> 'https://authgear.com/claims/user/is_verified') = 'true'
   )
   with check (
     (select auth.jwt() ->> 'iss') = 'https://hazard-vaa5a1.authgear.cloud'
     and (select auth.jwt() ->> 'client_id') = '2b273d19926b6daa'
+    and (select auth.jwt() ->> 'https://authgear.com/claims/user/is_verified') = 'true'
   );
 
 create policy authgear_only_ai_sessions
@@ -96,10 +102,12 @@ create policy authgear_only_ai_sessions
   using (
     (select auth.jwt() ->> 'iss') = 'https://hazard-vaa5a1.authgear.cloud'
     and (select auth.jwt() ->> 'client_id') = '2b273d19926b6daa'
+    and (select auth.jwt() ->> 'https://authgear.com/claims/user/is_verified') = 'true'
   )
   with check (
     (select auth.jwt() ->> 'iss') = 'https://hazard-vaa5a1.authgear.cloud'
     and (select auth.jwt() ->> 'client_id') = '2b273d19926b6daa'
+    and (select auth.jwt() ->> 'https://authgear.com/claims/user/is_verified') = 'true'
   );
 
 create policy authgear_only_user_milestone_progress
@@ -107,10 +115,12 @@ create policy authgear_only_user_milestone_progress
   using (
     (select auth.jwt() ->> 'iss') = 'https://hazard-vaa5a1.authgear.cloud'
     and (select auth.jwt() ->> 'client_id') = '2b273d19926b6daa'
+    and (select auth.jwt() ->> 'https://authgear.com/claims/user/is_verified') = 'true'
   )
   with check (
     (select auth.jwt() ->> 'iss') = 'https://hazard-vaa5a1.authgear.cloud'
     and (select auth.jwt() ->> 'client_id') = '2b273d19926b6daa'
+    and (select auth.jwt() ->> 'https://authgear.com/claims/user/is_verified') = 'true'
   );
 
 create policy authgear_only_journeys
@@ -118,10 +128,12 @@ create policy authgear_only_journeys
   using (
     (select auth.jwt() ->> 'iss') = 'https://hazard-vaa5a1.authgear.cloud'
     and (select auth.jwt() ->> 'client_id') = '2b273d19926b6daa'
+    and (select auth.jwt() ->> 'https://authgear.com/claims/user/is_verified') = 'true'
   )
   with check (
     (select auth.jwt() ->> 'iss') = 'https://hazard-vaa5a1.authgear.cloud'
     and (select auth.jwt() ->> 'client_id') = '2b273d19926b6daa'
+    and (select auth.jwt() ->> 'https://authgear.com/claims/user/is_verified') = 'true'
   );
 
 create policy authgear_only_milestones
@@ -129,10 +141,12 @@ create policy authgear_only_milestones
   using (
     (select auth.jwt() ->> 'iss') = 'https://hazard-vaa5a1.authgear.cloud'
     and (select auth.jwt() ->> 'client_id') = '2b273d19926b6daa'
+    and (select auth.jwt() ->> 'https://authgear.com/claims/user/is_verified') = 'true'
   )
   with check (
     (select auth.jwt() ->> 'iss') = 'https://hazard-vaa5a1.authgear.cloud'
     and (select auth.jwt() ->> 'client_id') = '2b273d19926b6daa'
+    and (select auth.jwt() ->> 'https://authgear.com/claims/user/is_verified') = 'true'
   );
 
 create policy authgear_only_resources
@@ -140,10 +154,12 @@ create policy authgear_only_resources
   using (
     (select auth.jwt() ->> 'iss') = 'https://hazard-vaa5a1.authgear.cloud'
     and (select auth.jwt() ->> 'client_id') = '2b273d19926b6daa'
+    and (select auth.jwt() ->> 'https://authgear.com/claims/user/is_verified') = 'true'
   )
   with check (
     (select auth.jwt() ->> 'iss') = 'https://hazard-vaa5a1.authgear.cloud'
     and (select auth.jwt() ->> 'client_id') = '2b273d19926b6daa'
+    and (select auth.jwt() ->> 'https://authgear.com/claims/user/is_verified') = 'true'
   );
 
 -- Link an existing Supabase account to Authgear on first login only when both
