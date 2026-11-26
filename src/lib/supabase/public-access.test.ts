@@ -17,6 +17,22 @@ const verification = readFileSync(
   new URL("../../../supabase/tests/anon_public_access.sql", import.meta.url),
   "utf8"
 );
+const geornyListPage = readFileSync(
+  new URL("../../app/georny/page.tsx", import.meta.url),
+  "utf8"
+);
+const geornyDetailPage = readFileSync(
+  new URL("../../app/georny/[id]/page.tsx", import.meta.url),
+  "utf8"
+);
+const coursesPage = readFileSync(
+  new URL("../../app/courses/page.tsx", import.meta.url),
+  "utf8"
+);
+const booksPage = readFileSync(
+  new URL("../../app/books/page.tsx", import.meta.url),
+  "utf8"
+);
 
 const fields = (selection: string) =>
   selection.split(",").map((field) => field.trim());
@@ -24,16 +40,8 @@ const fields = (selection: string) =>
 describe("anonymous public Supabase access", () => {
   it("limits public journey projections and excludes owner identifiers", () => {
     expect(fields(PUBLIC_JOURNEY_SELECT)).toEqual([
-      "id",
-      "slug",
-      "title",
-      "description",
-      "category",
-      "difficulty",
-      "target_outcome",
-      "estimated_hours",
-      "is_published",
-      "is_featured",
+      "id", "slug", "title", "description", "category", "difficulty",
+      "target_outcome", "estimated_hours", "is_published", "is_featured",
       "cover_image_url",
     ]);
     expect(PUBLIC_JOURNEY_SELECT).not.toContain("created_by");
@@ -41,33 +49,29 @@ describe("anonymous public Supabase access", () => {
 
   it("limits public resource projections to catalogue fields", () => {
     expect(fields(PUBLIC_RESOURCE_SELECT)).toEqual([
-      "id",
-      "title",
-      "description",
-      "url",
-      "resource_type",
-      "provider",
-      "language",
-      "pricing_type",
-      "difficulty",
-      "duration_hours",
-      "has_certificate",
-      "quality_score",
-      "is_published",
+      "id", "title", "description", "url", "resource_type", "provider",
+      "language", "pricing_type", "difficulty", "duration_hours",
+      "has_certificate", "quality_score", "is_published",
     ]);
     expect(PUBLIC_RESOURCE_SELECT).not.toContain("is_verified");
   });
 
   it("limits public milestone projections to fields rendered by Georny", () => {
     expect(fields(PUBLIC_MILESTONE_SELECT)).toEqual([
-      "id",
-      "journey_id",
-      "title",
-      "description",
-      "position",
-      "node_type",
-      "estimated_hours",
+      "id", "journey_id", "title", "description", "position",
+      "node_type", "estimated_hours",
     ]);
+  });
+
+  it("uses explicit projections on every public catalogue page", () => {
+    expect(geornyListPage).toContain(".select(PUBLIC_JOURNEY_SELECT)");
+    expect(geornyDetailPage).toContain(".select(PUBLIC_JOURNEY_SELECT)");
+    expect(geornyDetailPage).toContain(".select(PUBLIC_MILESTONE_SELECT)");
+    expect(coursesPage).toContain(".select(PUBLIC_RESOURCE_SELECT)");
+    expect(booksPage).toContain(".select(PUBLIC_RESOURCE_SELECT)");
+    for (const page of [geornyListPage, geornyDetailPage, coursesPage, booksPage]) {
+      expect(page).not.toContain('.select("*")');
+    }
   });
 
   it("revokes broad anonymous table, sequence, and function privileges", () => {
@@ -86,16 +90,14 @@ describe("anonymous public Supabase access", () => {
     for (const role of ["postgres", "supabase_admin"]) {
       expect(migration).toMatch(
         new RegExp(
-          "ALTER DEFAULT PRIVILEGES FOR ROLE " +
-            role +
+          "ALTER DEFAULT PRIVILEGES FOR ROLE " + role +
             " IN SCHEMA public\\s+REVOKE ALL ON TABLES FROM anon;",
           "i"
         )
       );
       expect(migration).toMatch(
         new RegExp(
-          "ALTER DEFAULT PRIVILEGES FOR ROLE " +
-            role +
+          "ALTER DEFAULT PRIVILEGES FOR ROLE " + role +
             " IN SCHEMA public\\s+REVOKE ALL ON SEQUENCES FROM anon;",
           "i"
         )
@@ -108,8 +110,7 @@ describe("anonymous public Supabase access", () => {
       expect(migration).toMatch(
         new RegExp(
           "GRANT SELECT\\s*\\([\\s\\S]*?\\)\\s*ON TABLE public\\." +
-            table +
-            " TO anon;",
+            table + " TO anon;",
           "i"
         )
       );
@@ -131,18 +132,10 @@ describe("anonymous public Supabase access", () => {
   it("verifies effective anonymous privileges across public relations", () => {
     expect(verification).toMatch(/relkind IN \('r', 'p', 'v', 'm', 'f'\)/i);
     for (const privilege of [
-      "INSERT",
-      "UPDATE",
-      "DELETE",
-      "TRUNCATE",
-      "REFERENCES",
-      "TRIGGER",
-      "MAINTAIN",
+      "INSERT", "UPDATE", "DELETE", "TRUNCATE", "REFERENCES", "TRIGGER", "MAINTAIN",
     ]) {
       expect(verification).toContain(
-        "has_table_privilege('anon', table_record.relation_oid, '" +
-          privilege +
-          "')"
+        "has_table_privilege('anon', table_record.relation_oid, '" + privilege + "')"
       );
     }
     expect(verification).toMatch(/has_column_privilege\('anon'/i);

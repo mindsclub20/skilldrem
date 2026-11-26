@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { GeornyGraph } from "@/components/georny/GeornyGraph";
+import { PUBLIC_JOURNEY_SELECT, PUBLIC_MILESTONE_SELECT } from "@/lib/supabase/public-select";
 
 export default async function GeornyDetailPage({
   params,
@@ -12,7 +13,7 @@ export default async function GeornyDetailPage({
   const supabase = await createClient();
 
   const isUuid = /^[0-9a-f-]{36}$/i.test(id);
-  let q = supabase.from("journeys").select("*").eq("is_published", true);
+  const q = supabase.from("journeys").select(PUBLIC_JOURNEY_SELECT).eq("is_published", true);
   const { data: journey } = isUuid
     ? await q.eq("id", id).maybeSingle()
     : await q.eq("slug", id).maybeSingle();
@@ -21,7 +22,7 @@ export default async function GeornyDetailPage({
 
   const { data: milestones } = await supabase
     .from("milestones")
-    .select("*")
+    .select(PUBLIC_MILESTONE_SELECT)
     .eq("journey_id", journey.id)
     .order("position");
 

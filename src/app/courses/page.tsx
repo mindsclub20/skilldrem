@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { PUBLIC_RESOURCE_SELECT } from "@/lib/supabase/public-select";
 
 export default async function CoursesPage() {
   const supabase = await createClient();
   const { data: courses } = await supabase
     .from("resources")
-    .select("*")
+    .select(PUBLIC_RESOURCE_SELECT)
     .eq("resource_type", "course")
     .eq("is_published", true)
     .order("quality_score", { ascending: false })

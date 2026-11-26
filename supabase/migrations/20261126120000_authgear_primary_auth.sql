@@ -5,6 +5,33 @@
 
 begin;
 
+-- Anonymous requests currently inherit broad grants from the anon role.
+-- RLS does not protect TRUNCATE and REFERENCES, so remove all table-level
+-- anonymous privileges before restoring only the public catalogue projections.
+REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA public FROM anon;
+REVOKE ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public FROM anon;
+REVOKE EXECUTE ON ALL FUNCTIONS IN SCHEMA public FROM anon;
+REVOKE EXECUTE ON ALL FUNCTIONS IN SCHEMA public FROM PUBLIC;
+
+-- Prevent the observed public-schema object owners from reintroducing anon
+-- grants on future tables, sequences, and functions.
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
+  REVOKE ALL ON TABLES FROM anon;
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
+  REVOKE ALL ON SEQUENCES FROM anon;
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
+  REVOKE EXECUTE ON FUNCTIONS FROM anon;
+ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public
+  REVOKE ALL ON TABLES FROM anon;
+ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public
+  REVOKE ALL ON SEQUENCES FROM anon;
+ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public
+  REVOKE EXECUTE ON FUNCTIONS FROM anon;
+
+-- New public functions must explicitly revoke PUBLIC and anon execution.
+-- The global PUBLIC default is intentionally not changed here because that
+-- would alter default function access across every schema, not just public.
+
 -- Third-party Authgear users do not have rows in auth.users. Remove only the
 -- foreign keys to auth.users; keep UUID columns, data, and all other relations.
 alter table public.profiles
@@ -25,26 +52,47 @@ alter table public.user_milestone_progress
 alter table public.journeys
   drop constraint if exists journeys_created_by_fkey;
 
--- Published learning content remains publicly readable. Private ownership
--- checks continue to use auth.uid(), which reads the UUID Authgear sub claim.
+-- Keep owner-aware reads authenticated-only. Anonymous catalogue policies
+-- are separate and check only published status, avoiding owner-column access.
 drop policy if exists journeys_read_published_or_owned on public.journeys;
 create policy journeys_read_published_or_owned
   on public.journeys
   for select
-  to anon, authenticated
+  to authenticated
   using (is_published or created_by = (select auth.uid()));
+
+drop policy if exists journeys_public_read_published on public.journeys;
+create policy journeys_public_read_published
+  on public.journeys
+  for select
+  to anon
+  using (is_published = true);
 
 drop policy if exists milestones_read_accessible_journey on public.milestones;
 create policy milestones_read_accessible_journey
   on public.milestones
   for select
-  to anon, authenticated
+  to authenticated
   using (
     exists (
       select 1
       from public.journeys j
       where j.id = milestones.journey_id
         and (j.is_published or j.created_by = (select auth.uid()))
+    )
+  );
+
+drop policy if exists milestones_public_read_published on public.milestones;
+create policy milestones_public_read_published
+  on public.milestones
+  for select
+  to anon
+  using (
+    exists (
+      select 1
+      from public.journeys j
+      where j.id = milestones.journey_id
+        and j.is_published = true
     )
   );
 
@@ -286,5 +334,23 @@ drop trigger if exists guard_profile_admin_flag on public.profiles;
 create trigger guard_profile_admin_flag
 before insert or update on public.profiles
 for each row execute function public.guard_profile_admin_flag();
+
+-- Public pages use explicit projections; never expose ownership or internal columns.
+GRANT SELECT (
+  id, slug, title, description, category, difficulty, target_outcome,
+  estimated_hours, is_published, is_featured, cover_image_url
+) ON TABLE public.journeys TO anon;
+
+GRANT SELECT (
+  id, title, description, url, resource_type, provider, language,
+  pricing_type, difficulty, duration_hours, has_certificate, quality_score,
+  is_published
+) ON TABLE public.resources TO anon;
+
+GRANT SELECT (
+  id, journey_id, title, description, position, node_type, estimated_hours
+) ON TABLE public.milestones TO anon;
+
+REVOKE EXECUTE ON FUNCTION public.guard_profile_admin_flag() FROM PUBLIC, anon;
 
 commit;
