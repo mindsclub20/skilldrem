@@ -186,7 +186,7 @@ begin
     return 'email_claim_required';
   end if;
 
-  if coalesce(auth.jwt() ->> 'email_verified', 'false') <> 'true' then
+  if coalesce(auth.jwt() ->> 'https://authgear.com/claims/user/is_verified', 'false') <> 'true' then
     return 'verification_required';
   end if;
 
