@@ -74,6 +74,15 @@ describe("anonymous public Supabase access", () => {
     }
   });
 
+  it("does not query the unavailable milestone dependency relation", () => {
+    expect(geornyDetailPage).not.toContain('.from("milestone_dependencies")');
+    expect(geornyDetailPage).toContain(
+      "const dependencies: Array<{ milestone_id: string; depends_on_id: string }> = [];"
+    );
+    expect(geornyDetailPage).toContain("dependencies={dependencies}");
+    expect(geornyDetailPage).toContain("Explicit prerequisite links are not available yet.");
+  });
+
   it("revokes broad anonymous table, sequence, and function privileges", () => {
     expect(migration).toMatch(
       /REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA public FROM anon;/i
