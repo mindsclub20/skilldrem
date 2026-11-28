@@ -96,6 +96,9 @@ create policy milestones_public_read_published
     )
   );
 
+-- PR #9 may have created this older policy name. Remove it before
+-- installing the shared policy so either migration order leaves one policy.
+drop policy if exists resources_public_read_published on public.resources;
 drop policy if exists resources_read_published on public.resources;
 create policy resources_read_published
   on public.resources
