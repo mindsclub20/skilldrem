@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { MarkdownMessage } from "@/components/ai/MarkdownMessage";
+import { EXAMPLE_GOALS } from "@/lib/example-goals";
 
 type Resource = {
   title: string | null;
@@ -125,9 +126,21 @@ export default function DiscoverPage() {
               value={goal}
               onChange={(e) => setGoal(e.target.value)}
               required
-              placeholder="e.g. Python for data analysis from zero"
+              placeholder="e.g. JEE Main Mathematics foundation"
               className="w-full h-12 rounded-xl border border-border bg-card px-4 focus:ring-2 focus:ring-ring focus:outline-none"
             />
+            <div className="mt-2 flex flex-wrap gap-2">
+              {EXAMPLE_GOALS.map((example) => (
+                <button
+                  key={example.label}
+                  type="button"
+                  onClick={() => setGoal(example.value)}
+                  className="rounded-full border border-border bg-card px-2.5 py-1 text-[11px] text-muted-foreground transition hover:border-accent/50 hover:text-foreground"
+                >
+                  {example.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div>
