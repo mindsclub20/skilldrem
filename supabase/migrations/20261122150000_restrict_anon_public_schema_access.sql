@@ -78,14 +78,20 @@ GRANT SELECT (
 ALTER TABLE public.journeys ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.resources ENABLE ROW LEVEL SECURITY;
 
+-- Use stable policy names shared with the Authgear migration. Drop both
+-- names used by earlier revisions so applying these migrations in either
+-- order does not leave duplicate permissive SELECT policies.
+DROP POLICY IF EXISTS journeys_public_read_published ON public.journeys;
 CREATE POLICY journeys_public_read_published
   ON public.journeys
   FOR SELECT
   TO anon
   USING (is_published = true);
 
-CREATE POLICY resources_public_read_published
+DROP POLICY IF EXISTS resources_public_read_published ON public.resources;
+DROP POLICY IF EXISTS resources_read_published ON public.resources;
+CREATE POLICY resources_read_published
   ON public.resources
   FOR SELECT
-  TO anon
+  TO anon, authenticated
   USING (is_published = true);
