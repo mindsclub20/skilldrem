@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { getAuthgearSupabase } from "@/lib/authgear-server";
 
 export const runtime = "nodejs";
 
@@ -7,16 +7,13 @@ export const runtime = "nodejs";
  * GET /api/ai/roadmap/list
  * Lists journeys the authenticated user is enrolled in (or created).
  */
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
+    const auth = await getAuthgearSupabase(request);
+    if (!auth) {
       return NextResponse.json({ error: "Sign in required" }, { status: 401 });
     }
+    const { supabase, user } = auth;
 
     const { data: enrollments, error } = await supabase
       .from("user_journeys")

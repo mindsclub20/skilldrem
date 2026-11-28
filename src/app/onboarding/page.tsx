@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { useAuthgear } from "@/components/auth/AuthgearProvider";
 
 const INTERESTS = ["Programming","Data Science","Design","Business","Languages","Math","Science","AI/ML","Web Dev","Mobile"];
 const LEVELS = ["beginner","intermediate","advanced","expert"] as const;
@@ -15,24 +16,43 @@ export default function OnboardingPage() {
   const [hours, setHours] = useState(5);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const { user } = useAuthgear();
+  const [error, setError] = useState<string | null>(null);
 
   function toggleInterest(i: string) {
     setInterests((prev) => prev.includes(i) ? prev.filter((x) => x !== i) : [...prev, i]);
   }
 
   async function finish() {
+    if (!user) {
+      router.push("/auth/login");
+      return;
+    }
     setLoading(true);
+    setError(null);
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { router.push("/auth/login"); return; }
-    await supabase.from("user_preferences").upsert({
-      user_id: user.id,
+    const { error: preferencesError } = await supabase.from("user_preferences").upsert({
+      user_id: user.sub,
       interests,
       experience_level: level,
       budget_preference: budget,
       available_hours_per_week: hours,
-    });
-    await supabase.from("profiles").update({ onboarding_completed: true }).eq("id", user.id);
+    }, { onConflict: "user_id" });
+    if (preferencesError) {
+      setError(preferencesError.message);
+      setLoading(false);
+      return;
+    }
+    const { error: profileError } = await supabase.from("profiles").upsert({
+      id: user.sub,
+      email: user.email ?? null,
+      onboarding_completed: true,
+    }, { onConflict: "id" });
+    if (profileError) {
+      setError(profileError.message);
+      setLoading(false);
+      return;
+    }
     router.push("/dashboard");
     router.refresh();
   }
@@ -42,6 +62,7 @@ export default function OnboardingPage() {
       <div className="w-full max-w-lg rounded-2xl border border-border bg-card p-8 shadow-sm">
         <h1 className="text-xl font-bold">Set up your learning profile</h1>
         <p className="text-sm text-muted-foreground mt-1">Step {step + 1} of 3</p>
+        {error && <p role="alert" className="mt-3 text-sm text-red-600">{error}</p>}
         {step === 0 && (
           <div className="mt-6">
             <p className="font-medium mb-3">What are you interested in?</p>

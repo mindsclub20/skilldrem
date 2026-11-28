@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { PUBLIC_RESOURCE_SELECT } from "@/lib/supabase/public-select";
 
 export default async function BooksPage() {
   const supabase = await createClient();
   const { data: books } = await supabase
     .from("resources")
-    .select("*")
+    .select(PUBLIC_RESOURCE_SELECT)
     .in("resource_type", ["book", "ebook"])
     .eq("is_published", true)
     .order("title")

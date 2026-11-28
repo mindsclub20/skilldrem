@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { GeornyGraph } from "@/components/georny/GeornyGraph";
+import { PUBLIC_JOURNEY_SELECT, PUBLIC_MILESTONE_SELECT } from "@/lib/supabase/public-select";
 
 export default async function GeornyDetailPage({
   params,
@@ -12,7 +13,7 @@ export default async function GeornyDetailPage({
   const supabase = await createClient();
 
   const isUuid = /^[0-9a-f-]{36}$/i.test(id);
-  let q = supabase.from("journeys").select("*").eq("is_published", true);
+  const q = supabase.from("journeys").select(PUBLIC_JOURNEY_SELECT).eq("is_published", true);
   const { data: journey } = isUuid
     ? await q.eq("id", id).maybeSingle()
     : await q.eq("slug", id).maybeSingle();
@@ -21,17 +22,13 @@ export default async function GeornyDetailPage({
 
   const { data: milestones } = await supabase
     .from("milestones")
-    .select("*")
+    .select(PUBLIC_MILESTONE_SELECT)
     .eq("journey_id", journey.id)
     .order("position");
 
-  const milestoneIds = (milestones ?? []).map((m) => m.id);
-  const { data: deps } = milestoneIds.length
-    ? await supabase
-        .from("milestone_dependencies")
-        .select("milestone_id, depends_on_id")
-        .in("milestone_id", milestoneIds)
-    : { data: [] };
+  // The current schema has no milestone_dependencies relation. Keep the graph
+  // honest: render milestones in order without inventing prerequisite edges.
+  const dependencies: Array<{ milestone_id: string; depends_on_id: string }> = [];
 
   return (
     <div className="min-h-screen">
@@ -51,8 +48,9 @@ export default async function GeornyDetailPage({
           <p className="mt-2 text-sm"><span className="font-medium">Outcome:</span> {journey.target_outcome}</p>
         )}
         <div className="mt-8">
-          <h2 className="font-semibold mb-3">Interactive path</h2>
-          <GeornyGraph milestones={milestones ?? []} dependencies={deps ?? []} />
+          <h2 className="font-semibold">Milestone map</h2>
+          <p className="mb-3 mt-1 text-sm text-muted-foreground">Milestones are shown in order. Explicit prerequisite links are not available yet.</p>
+          <GeornyGraph milestones={milestones ?? []} dependencies={dependencies} />
         </div>
         <section className="mt-10">
           <h2 className="font-semibold mb-3">Milestones (list)</h2>

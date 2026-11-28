@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { PUBLIC_JOURNEY_SELECT } from "@/lib/supabase/public-select";
 
 export default async function GeornyListPage() {
   const supabase = await createClient();
   const { data: journeys } = await supabase
     .from("journeys")
-    .select("*")
+    .select(PUBLIC_JOURNEY_SELECT)
     .eq("is_published", true)
     .order("is_featured", { ascending: false })
     .limit(24);

@@ -6,9 +6,13 @@ import {
 } from "@/lib/ai/provider";
 import { isSafeHttpUrl } from "@/lib/ai/firecrawl";
 import { filterAndRankSearchResults } from "@/lib/ai/resource-filter";
+import { createRateLimiter, getRequestClientKey } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
+
+// Best-effort per-instance guard. Configure a distributed edge limit before high traffic.
+const discoverRateLimiter = createRateLimiter({ limit: 8, windowMs: 60_000 });
 
 type BudgetPreference = "free_only" | "free_preferred" | "mixed" | "paid_ok";
 
@@ -88,6 +92,15 @@ function sanitizeScrapeText(text: string): string {
 }
 
 export async function POST(request: Request) {
+  const rate = discoverRateLimiter.consume(getRequestClientKey(request));
+  if (!rate.allowed) {
+    const retryAfter = Math.max(1, Math.ceil((rate.resetAt - Date.now()) / 1000));
+    return NextResponse.json(
+      { error: "Too many discovery requests. Please try again shortly." },
+      { status: 429, headers: { "Retry-After": String(retryAfter), "X-RateLimit-Remaining": "0" } }
+    );
+  }
+
   try {
     const body = (await request.json()) as {
       goal?: string;
