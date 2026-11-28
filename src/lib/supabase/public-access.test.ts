@@ -176,7 +176,8 @@ describe("anonymous public Supabase access", () => {
     );
     expect(migration).not.toMatch(/CREATE POLICY resources_public_read_published/i);
     expect(verification).toContain("policyname = 'resources_read_published'");
-    expect(verification).not.toContain("policyname = 'resources_public_read_published'");
+    expect(verification).toContain("policyname = 'resources_public_read_published'");
+    expect(verification).toContain("legacy public resources policy remains");
 
     const journeyGrant = migration.match(
       /GRANT SELECT\s*\(([^)]*)\)\s*ON TABLE public\.journeys TO anon;/i
