@@ -217,6 +217,15 @@ BEGIN
     RAISE EXCEPTION 'owner-aware milestone policy must not be assigned to anon';
   END IF;
 
+  IF EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'resources'
+      AND policyname = 'resources_public_read_published'
+  ) THEN
+    RAISE EXCEPTION 'legacy public resources policy remains';
+  END IF;
+
   IF NOT EXISTS (
     SELECT 1 FROM pg_policies
     WHERE schemaname = 'public'
