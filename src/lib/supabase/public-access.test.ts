@@ -168,9 +168,15 @@ describe("anonymous public Supabase access", () => {
     expect(migration).toMatch(
       /CREATE POLICY journeys_public_read_published[\s\S]*?FOR SELECT[\s\S]*?TO anon[\s\S]*?USING\s*\(is_published\s*=\s*true\)/i
     );
+    expect(migration).toMatch(/DROP POLICY IF EXISTS journeys_public_read_published ON public\\.journeys;/i);
+    expect(migration).toMatch(/DROP POLICY IF EXISTS resources_read_published ON public\\.resources;/i);
+    expect(migration).toMatch(/DROP POLICY IF EXISTS resources_public_read_published ON public\\.resources;/i);
     expect(migration).toMatch(
-      /CREATE POLICY resources_public_read_published[\s\S]*?FOR SELECT[\s\S]*?TO anon[\s\S]*?USING\s*\(is_published\s*=\s*true\)/i
+      /CREATE POLICY resources_read_published[\s\S]*?FOR SELECT[\s\S]*?TO anon,\s*authenticated[\s\S]*?USING\s*\(is_published\s*=\s*true\)/i
     );
+    expect(migration).not.toMatch(/CREATE POLICY resources_public_read_published/i);
+    expect(verification).toContain("policyname = 'resources_read_published'");
+    expect(verification).not.toContain("policyname = 'resources_public_read_published'");
 
     const journeyGrant = migration.match(
       /GRANT SELECT\s*\(([^)]*)\)\s*ON TABLE public\.journeys TO anon;/i
