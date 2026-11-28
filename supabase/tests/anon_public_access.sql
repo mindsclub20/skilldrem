@@ -232,7 +232,7 @@ BEGIN
     SELECT 1 FROM pg_policies
     WHERE schemaname = 'public'
       AND tablename = 'resources'
-      AND policyname = 'resources_public_read_published'
+      AND policyname = 'resources_read_published'
       AND roles @> ARRAY['anon']::name[]
       AND cmd = 'SELECT'
   ) THEN
