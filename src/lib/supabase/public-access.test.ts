@@ -148,6 +148,8 @@ describe("anonymous public Supabase access", () => {
 
     expect(legacyPolicyDrop).toBeGreaterThanOrEqual(0);
     expect(sharedPolicyCreate).toBeGreaterThan(legacyPolicyDrop);
+    expect(verification).toContain("policyname = 'resources_public_read_published'");
+    expect(verification).toContain("legacy public resources policy remains");
   });
 
   it("verifies effective anonymous privileges across public relations", () => {
