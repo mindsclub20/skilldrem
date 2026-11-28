@@ -138,6 +138,18 @@ describe("anonymous public Supabase access", () => {
     );
   });
 
+  it("removes the earlier public resource policy before creating the shared policy", () => {
+    const legacyPolicyDrop = migration.toLowerCase().indexOf(
+      "drop policy if exists resources_public_read_published on public.resources;"
+    );
+    const sharedPolicyCreate = migration.toLowerCase().indexOf(
+      "create policy resources_read_published"
+    );
+
+    expect(legacyPolicyDrop).toBeGreaterThanOrEqual(0);
+    expect(sharedPolicyCreate).toBeGreaterThan(legacyPolicyDrop);
+  });
+
   it("verifies effective anonymous privileges across public relations", () => {
     expect(verification).toMatch(/relkind IN \('r', 'p', 'v', 'm', 'f'\)/i);
     for (const privilege of [
